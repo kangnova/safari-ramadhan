@@ -26,10 +26,10 @@
 
 .nav-links {
     display: flex;
-    gap: 2rem;
+    gap: 1.5rem;
     list-style: none;
     align-items: center;
-    margin-left: 3rem;
+    margin-left: 2rem;
 }
 
 .nav-links a {
@@ -47,7 +47,7 @@
     background-color: #20B2AA;
     /* Warna default untuk Jadwal Safari */
     color: white;
-    padding: 0.5rem 1.5rem;
+    padding: 0.5rem 1.2rem;
     border-radius: 25px;
     text-decoration: none;
     transition: background-color 0.3s ease;
@@ -765,189 +765,192 @@
         margin-right: auto;
     }
 
-    /* Global Social Media Icons Style */
-    .social-links {
-        display: flex;
-        gap: 1rem;
-        flex-wrap: wrap;
-    }
+}
 
-    .social-icon {
-        width: 50px;
-        height: 50px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        text-decoration: none;
-        color: white !important;
-        border-radius: 12px;
-        font-size: 24px;
-        transition: transform 0.3s ease, opacity 0.3s;
-    }
+/* Global Social Media Icons Style */
+.social-links {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
 
-    .social-icon:hover {
-        transform: translateY(-3px);
-        opacity: 0.9;
-    }
+.social-icon {
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    color: white !important;
+    border-radius: 12px;
+    font-size: 24px;
+    transition: transform 0.3s ease, opacity 0.3s;
+}
 
-    .social-icon.fb {
-        background-color: #3b5998;
-    }
+.social-icon:hover {
+    transform: translateY(-3px);
+    opacity: 0.9;
+}
 
-    .social-icon.twitter {
-        background-color: #000000;
-    }
+.social-icon.fb {
+    background-color: #3b5998;
+}
 
-    .social-icon.ig {
-        background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
-    }
+.social-icon.twitter {
+    background-color: #000000;
+}
 
-    .social-icon.yt {
-        background-color: #FF0000;
-    }
+.social-icon.ig {
+    background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+}
 
-    .social-icon.tt {
-        background-color: #000000;
-    }
+.social-icon.yt {
+    background-color: #FF0000;
+}
 
-    /* Footer Mobile Optimization */
-    @media (max-width: 991px) {
-        footer {
-            text-align: center;
-            padding: 3rem 1rem;
-        }
+.social-icon.tt {
+    background-color: #000000;
+}
 
-        .social-links {
-            justify-content: center;
-        }
-
-        .footer-text p {
-            margin-bottom: 1rem;
-            line-height: 1.6;
-        }
-    }
-
-    /* Team Section Styles */
-    .team-section {
-        padding: 4rem 5%;
-        background-color: #f9f9f9;
-    }
-
-    .team-container {
-        max-width: 1200px;
-        margin: 0 auto;
-    }
-
-    .team-intro {
+/* Footer Mobile Optimization */
+@media (max-width: 991px) {
+    footer {
         text-align: center;
-        max-width: 800px;
-        margin: 0 auto 2rem;
-        color: #666;
+        padding: 3rem 1rem;
+    }
+
+    .social-links {
+        justify-content: center;
+    }
+
+    .footer-text p {
+        margin-bottom: 1rem;
         line-height: 1.6;
     }
+}
 
-    .team-filters {
-        display: flex;
-        justify-content: center;
-        gap: 1rem;
-        margin-bottom: 3rem;
-        flex-wrap: wrap;
-    }
+/* Team Section Styles */
+.team-section {
+    padding: 4rem 5%;
+    background-color: #f9f9f9;
+}
 
-    .filter-btn {
-        padding: 0.5rem 1.5rem;
-        border: 2px solid #20B2AA;
-        background: transparent;
-        color: #20B2AA;
-        border-radius: 25px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-    }
+.team-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
 
-    .filter-btn.active,
-    .filter-btn:hover {
-        background: #20B2AA;
-        color: white;
-    }
+.team-intro {
+    text-align: center;
+    max-width: 800px;
+    margin: 0 auto 2rem;
+    color: #666;
+    line-height: 1.6;
+}
 
+.team-filters {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 3rem;
+    flex-wrap: wrap;
+}
+
+.filter-btn {
+    padding: 0.5rem 1.5rem;
+    border: 2px solid #20B2AA;
+    background: transparent;
+    color: #20B2AA;
+    border-radius: 25px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.filter-btn.active,
+.filter-btn:hover {
+    background: #20B2AA;
+    color: white;
+}
+
+.team-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 2rem;
+}
+
+.team-card {
+    background: white;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease;
+}
+
+.team-card:hover {
+    transform: translateY(-5px);
+}
+
+.team-photo {
+    width: 100%;
+    height: 250px;
+    overflow: hidden;
+    position: relative;
+}
+
+.team-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.5s ease;
+}
+
+.team-card:hover .team-photo img {
+    transform: scale(1.1);
+}
+
+.team-info {
+    padding: 1.5rem;
+    text-align: center;
+}
+
+.team-name {
+    font-size: 1.1rem;
+    color: #333;
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+}
+
+.team-location {
+    font-size: 0.9rem;
+    color: #666;
+    margin-bottom: 1rem;
+}
+
+.team-contact .contact-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 45px;
+    height: 45px;
+    background: #20B2AA;
+    color: white;
+    border-radius: 50%;
+    text-decoration: none;
+    transition: background-color 0.3s ease;
+    font-size: 1.5rem;
+}
+
+.team-contact .contact-icon:hover {
+    background: #008B8B;
+}
+
+@media (max-width: 768px) {
     .team-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-        gap: 2rem;
-    }
-
-    .team-card {
-        background: white;
-        border-radius: 10px;
-        overflow: hidden;
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-        transition: transform 0.3s ease;
-    }
-
-    .team-card:hover {
-        transform: translateY(-5px);
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 1rem;
     }
 
     .team-photo {
-        width: 100%;
-        height: 250px;
-        overflow: hidden;
-        position: relative;
+        height: 200px;
     }
-
-    .team-photo img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        transition: transform 0.5s ease;
-    }
-
-    .team-card:hover .team-photo img {
-        transform: scale(1.1);
-    }
-
-    .team-info {
-        padding: 1.5rem;
-        text-align: center;
-    }
-
-    .team-name {
-        font-size: 1.1rem;
-        color: #333;
-        margin-bottom: 0.5rem;
-        font-weight: bold;
-    }
-
-    .team-location {
-        font-size: 0.9rem;
-        color: #666;
-        margin-bottom: 1rem;
-    }
-
-    .team-contact .contact-icon {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 35px;
-        height: 35px;
-        background: #20B2AA;
-        color: white;
-        border-radius: 50%;
-        text-decoration: none;
-        transition: background-color 0.3s ease;
-    }
-
-    .team-contact .contact-icon:hover {
-        background: #008B8B;
-    }
-
-    @media (max-width: 768px) {
-        .team-grid {
-            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-            gap: 1rem;
-        }
-
-        .team-photo {
-            height: 200px;
-        }
-    }
+}

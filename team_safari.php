@@ -161,7 +161,7 @@ try {
 
         .team-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 2rem;
         }
 
@@ -203,6 +203,7 @@ try {
 
         .team-content {
             padding: 1.5rem;
+            text-align: center;
         }
 
         .team-name {
@@ -224,13 +225,18 @@ try {
         }
 
         .team-contact {
-            display: inline-block;
-            padding: 0.6rem 1.2rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 45px;
+            height: 45px;
             background-color: #20B2AA;
             color: white;
             text-decoration: none;
-            border-radius: 25px;
+            border-radius: 50%;
             transition: background-color 0.3s ease;
+            font-size: 1.5rem;
+            margin-top: 0.5rem;
         }
 
         .team-contact:hover {
@@ -417,7 +423,7 @@ try {
                                 <i class='bx bx-map'></i><?= htmlspecialchars($pengisi['alamat']) ?>
                             </p>
                             <a href="https://wa.me/<?= $pengisi['no_hp'] ?>" class="team-contact" target="_blank">
-                                <i class='bx bxl-whatsapp'></i> Hubungi
+                                <i class='bx bxl-whatsapp'></i>
                             </a>
                         </div>
                     </div>
