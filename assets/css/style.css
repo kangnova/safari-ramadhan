@@ -80,6 +80,27 @@
     /* Warna hover untuk Donasi */
 }
 
+.btn-login-nav {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 35px;
+    height: 35px;
+    background-color: #f0f0f0;
+    color: #333;
+    border-radius: 50%;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    border: 1px solid #ccc;
+    font-size: 1.2rem;
+}
+
+.btn-login-nav:hover {
+    background-color: #e0e0e0;
+    color: #20B2AA;
+    border-color: #20B2AA;
+}
+
 /* Hero Section Styles yang dimodifikasi */
 .hero {
     position: relative;

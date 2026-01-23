@@ -10,6 +10,21 @@ if (!isset($_SESSION['authenticated'])) {
 require_once '../koneksi.php';
 
 // Initialize variables
+$tahun = isset($_GET['tahun']) ? $_GET['tahun'] : date('Y');
+$kecamatan = isset($_GET['kecamatan']) ? $_GET['kecamatan'] : '';
+
+// Handle Quota Update
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_quota'])) {
+    $newQuota = (int)$_POST['quota_safari'];
+    try {
+        $stmt = $conn->prepare("UPDATE settings SET setting_value = :val WHERE setting_key = 'safari_quota'");
+        $stmt->execute(['val' => $newQuota]);
+        echo "<script>alert('Kuota berhasil diperbarui!'); window.location.href='pendaftar.php';</script>";
+    } catch (PDOException $e) {
+        echo "<script>alert('Gagal memperbarui kuota: " . $e->getMessage() . "');</script>";
+    }
+}
+
 $stats = [
     'total_lembaga' => 0,
     'total_santri' => 0,
@@ -18,8 +33,20 @@ $stats = [
 ];
 $statistikMateri = [];
 $pendaftar = [];
+$listKecamatan = [];
+$quotaSafari = 170; // Default
 
 try {
+    // Get Quota
+    $stmtQuota = $conn->prepare("SELECT setting_value FROM settings WHERE setting_key = 'safari_quota'");
+    $stmtQuota->execute();
+    $quotaSafari = (int)$stmtQuota->fetchColumn();
+
+    // Ambil daftar unik kecamatan untuk filter dropdown
+    $stmtKec = $conn->prepare("SELECT DISTINCT kecamatan FROM lembaga WHERE kecamatan IS NOT NULL AND kecamatan != '' ORDER BY kecamatan ASC");
+    $stmtKec->execute();
+    $listKecamatan = $stmtKec->fetchAll(PDO::FETCH_COLUMN);
+
     // Query untuk data statistik
     $queryStatistik = "
         SELECT 
@@ -28,10 +55,11 @@ try {
             COUNT(DISTINCT l.kecamatan) as total_kecamatan,
             SUM(CASE WHEN pl.duta_gnb = 1 THEN 1 ELSE 0 END) as total_duta
         FROM lembaga l
-        LEFT JOIN persetujuan_lembaga pl ON l.id = pl.lembaga_id";
+        LEFT JOIN persetujuan_lembaga pl ON l.id = pl.lembaga_id
+        WHERE YEAR(l.created_at) = :tahun";
 
     $stmtStats = $conn->prepare($queryStatistik);
-    $stmtStats->execute();
+    $stmtStats->execute(['tahun' => $tahun]);
     $fetchedStats = $stmtStats->fetch(PDO::FETCH_ASSOC);
     if ($fetchedStats) {
         $stats = $fetchedStats;
@@ -39,11 +67,13 @@ try {
 
     // Query untuk statistik materi
     $queryMateri = "
-        SELECT materi, COUNT(*) as jumlah 
-        FROM materi_dipilih 
-        GROUP BY materi";
+        SELECT md.materi, COUNT(*) as jumlah 
+        FROM materi_dipilih md
+        JOIN lembaga l ON md.lembaga_id = l.id
+        WHERE YEAR(l.created_at) = :tahun
+        GROUP BY md.materi";
     $stmtMateri = $conn->prepare($queryMateri);
-    $stmtMateri->execute();
+    $stmtMateri->execute(['tahun' => $tahun]);
     $statistikMateri = $stmtMateri->fetchAll(PDO::FETCH_ASSOC);
 
     // Format data statistik materi
@@ -58,7 +88,7 @@ try {
         $materiStats[$stat['materi']] = $stat['jumlah'];
     }
 
-    // Query untuk data pendaftar
+    // Query untuk data pendaftar (Filtered)
     $query = "
         SELECT 
             l.*,
@@ -74,11 +104,21 @@ try {
         LEFT JOIN hari_aktif ha ON l.id = ha.lembaga_id
         LEFT JOIN materi_dipilih md ON l.id = md.lembaga_id
         LEFT JOIN persetujuan_lembaga pl ON l.id = pl.lembaga_id
+        WHERE YEAR(l.created_at) = :tahun";
+    
+    // Add Kecamatan Filter
+    $params = ['tahun' => $tahun];
+    if ($kecamatan) {
+        $query .= " AND l.kecamatan = :kecamatan";
+        $params['kecamatan'] = $kecamatan;
+    }
+
+    $query .= "
         GROUP BY l.id
         ORDER BY l.created_at DESC";
 
     $stmt = $conn->prepare($query);
-    $stmt->execute();
+    $stmt->execute($params);
     $pendaftar = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 } catch (PDOException $e) {
@@ -137,99 +177,175 @@ try {
     <?php require_once 'includes/header.php'; ?>
 
     <div class="container-fluid mt-4 px-4">
-        <h2 class="text-center mb-4">Dashboard Safari Ramadhan</h2>
+        <h2 class="text-center mb-4">Dashboard Safari Ramadhan <?= htmlspecialchars($tahun) ?></h2>
         
-        <!-- Statistik Umum -->
-        <div class="row mb-4">
-            <div class="col-md-3 mb-3">
-                <div class="card stats-card h-100 bg-primary text-white">
-                    <div class="card-body text-center">
-                        <i class="bi bi-buildings stats-icon"></i>
-                        <h5 class="card-title">Total Lembaga</h5>
-                        <h2 class="mb-0"><?= $stats['total_lembaga'] ?></h2>
-                    </div>
-                </div>
+        <!-- Manage Quota -->
+        <div class="card mb-4 border-warning">
+            <div class="card-header bg-warning text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-gear-fill"></i> Pengaturan Kuota</h5>
             </div>
-            <div class="col-md-3 mb-3">
-                <div class="card stats-card h-100 bg-success text-white">
-                    <div class="card-body text-center">
-                        <i class="bi bi-people stats-icon"></i>
-                        <h5 class="card-title">Total Santri</h5>
-                        <h2 class="mb-0"><?= number_format($stats['total_santri']) ?></h2>
+            <div class="card-body">
+                <form method="POST" class="row align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">Batas Maksimal Pendaftar:</label>
+                        <input type="number" name="quota_safari" class="form-control" value="<?= $quotaSafari ?>" required>
                     </div>
-                </div>
-            </div>
-            <div class="col-md-3 mb-3">
-                <div class="card stats-card h-100 bg-info text-white">
-                    <div class="card-body text-center">
-                        <i class="bi bi-geo-alt stats-icon"></i>
-                        <h5 class="card-title">Kecamatan</h5>
-                        <h2 class="mb-0"><?= $stats['total_kecamatan'] ?></h2>
+                    <div class="col-md-2">
+                        <button type="submit" name="update_quota" class="btn btn-primary w-100">
+                            <i class="bi bi-save"></i> Simpan
+                        </button>
                     </div>
-                </div>
-            </div>
-            <div class="col-md-3 mb-3">
-                <div class="card stats-card h-100 bg-warning text-white">
-                    <div class="card-body text-center">
-                        <i class="bi bi-star stats-icon"></i>
-                        <h5 class="card-title">Duta GNB</h5>
-                        <h2 class="mb-0"><?= $stats['total_duta'] ?></h2>
+                    <div class="col-md-7 text-end">
+                        <div class="d-inline-block bg-light p-2 rounded border">
+                            <small class="text-muted d-block">Status Saat Ini</small>
+                            <span class="fw-bold text-success">Terisi: <?= $stats['total_lembaga'] ?></span> / 
+                            <span class="fw-bold text-danger">Batas: <?= $quotaSafari ?></span>
+                        </div>
                     </div>
-                </div>
+                </form>
             </div>
         </div>
 
-        <!-- Statistik Materi -->
-        <div class="row mb-4">
-            <div class="col-md-3 mb-3">
-                <div class="card stats-card h-100 bg-primary bg-opacity-75 text-white">
-                    <div class="card-body text-center">
-                        <i class="bi bi-book stats-icon"></i>
-                        <h5 class="card-title">Berkisah Islami</h5>
-                        <h2 class="mb-0"><?= $materiStats['Berkisah Islami'] ?></h2>
-                        <small>Permintaan</small>
+        <!-- Filter Kecamatan -->
+        <div class="card mb-4">
+            <div class="card-body py-2">
+                <form method="GET" class="row align-items-center justify-content-center">
+                    <input type="hidden" name="tahun" value="<?= htmlspecialchars($tahun) ?>">
+                    <div class="col-auto">
+                        <label class="fw-bold">Filter Wilayah:</label>
                     </div>
-                </div>
-            </div>
-            <div class="col-md-3 mb-3">
-                <div class="card stats-card h-100 bg-success bg-opacity-75 text-white">
-                    <div class="card-body text-center">
-                        <i class="bi bi-lightbulb stats-icon"></i>
-                        <h5 class="card-title">Motivasi</h5>
-                        <h2 class="mb-0"><?= $materiStats['Motivasi & Muhasabah'] ?></h2>
-                        <small>Permintaan</small>
+                    <div class="col-auto">
+                        <select name="kecamatan" class="form-select" onchange="this.form.submit()">
+                            <option value="">-- Semua Kecamatan --</option>
+                            <?php foreach ($listKecamatan as $kec): ?>
+                                <option value="<?= htmlspecialchars($kec) ?>" <?= htmlspecialchars($kecamatan) == $kec ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($kec) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
-                </div>
-            </div>
-            <div class="col-md-3 mb-3">
-                <div class="card stats-card h-100 bg-info bg-opacity-75 text-white">
-                    <div class="card-body text-center">
-                        <i class="bi bi-people stats-icon"></i>
-                        <h5 class="card-title">Kajian</h5>
-                        <h2 class="mb-0"><?= $materiStats['Kajian Buka Bersama'] ?></h2>
-                        <small>Permintaan</small>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3 mb-3">
-                <div class="card stats-card h-100 bg-warning bg-opacity-75 text-white">
-                    <div class="card-body text-center">
-                        <i class="bi bi-journal-text stats-icon"></i>
-                        <h5 class="card-title">Tahfiz Al-Mulk</h5>
-                        <h2 class="mb-0"><?= $materiStats['Tahfiz Surat Al-Mulk'] ?></h2>
-                        <small>Permintaan</small>
-                    </div>
-                </div>
+                </form>
             </div>
         </div>
+
+        <?php if ($kecamatan): ?>
+            <!-- Statistik Per Kecamatan -->
+            <div class="alert alert-info text-center mb-4">
+                <h4><i class="bi bi-geo-alt-fill"></i> Data Kecamatan <?= htmlspecialchars($kecamatan) ?></h4>
+                <div class="row justify-content-center mt-3">
+                    <div class="col-md-3">
+                        <div class="card bg-white text-dark shadow-sm">
+                            <div class="card-body">
+                                <h6>Total Lembaga</h6>
+                                <h3><?= count($pendaftar) ?></h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-white text-dark shadow-sm">
+                            <div class="card-body">
+                                <h6>Total Santri</h6>
+                                <h3><?= number_format(array_sum(array_column($pendaftar, 'jumlah_santri'))) ?></h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        <?php else: ?>
+            <!-- Statistik Umum (Tampil jika tidak ada filter) -->
+            <div class="row mb-4">
+                <div class="col-md-3 mb-3">
+                    <div class="card stats-card h-100 bg-primary text-white">
+                        <div class="card-body text-center">
+                            <i class="bi bi-buildings stats-icon"></i>
+                            <h5 class="card-title">Total Lembaga</h5>
+                            <h2 class="mb-0"><?= $stats['total_lembaga'] ?></h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card stats-card h-100 bg-success text-white">
+                        <div class="card-body text-center">
+                            <i class="bi bi-people stats-icon"></i>
+                            <h5 class="card-title">Total Santri</h5>
+                            <h2 class="mb-0"><?= number_format($stats['total_santri']) ?></h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card stats-card h-100 bg-info text-white">
+                        <div class="card-body text-center">
+                            <i class="bi bi-geo-alt stats-icon"></i>
+                            <h5 class="card-title">Kecamatan</h5>
+                            <h2 class="mb-0"><?= $stats['total_kecamatan'] ?></h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card stats-card h-100 bg-warning text-white">
+                        <div class="card-body text-center">
+                            <i class="bi bi-star stats-icon"></i>
+                            <h5 class="card-title">Duta GNB</h5>
+                            <h2 class="mb-0"><?= $stats['total_duta'] ?></h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistik Materi -->
+            <div class="row mb-4">
+                <div class="col-md-3 mb-3">
+                    <div class="card stats-card h-100 bg-primary bg-opacity-75 text-white">
+                        <div class="card-body text-center">
+                            <i class="bi bi-book stats-icon"></i>
+                            <h5 class="card-title">Berkisah Islami</h5>
+                            <h2 class="mb-0"><?= $materiStats['Berkisah Islami'] ?></h2>
+                            <small>Permintaan</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card stats-card h-100 bg-success bg-opacity-75 text-white">
+                        <div class="card-body text-center">
+                            <i class="bi bi-lightbulb stats-icon"></i>
+                            <h5 class="card-title">Motivasi</h5>
+                            <h2 class="mb-0"><?= $materiStats['Motivasi & Muhasabah'] ?></h2>
+                            <small>Permintaan</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card stats-card h-100 bg-info bg-opacity-75 text-white">
+                        <div class="card-body text-center">
+                            <i class="bi bi-people stats-icon"></i>
+                            <h5 class="card-title">Kajian</h5>
+                            <h2 class="mb-0"><?= $materiStats['Kajian Buka Bersama'] ?></h2>
+                            <small>Permintaan</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card stats-card h-100 bg-warning bg-opacity-75 text-white">
+                        <div class="card-body text-center">
+                            <i class="bi bi-journal-text stats-icon"></i>
+                            <h5 class="card-title">Tahfiz Al-Mulk</h5>
+                            <h2 class="mb-0"><?= $materiStats['Tahfiz Surat Al-Mulk'] ?></h2>
+                            <small>Permintaan</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        <?php endif; ?>
 
         <!-- Tabel Data -->
         <div class="card">
             <div class="card-header bg-white">
                 <div class="d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Data Pendaftar</h5>
+                    <h5 class="mb-0">
+                        <?= $kecamatan ? 'Daftar Lembaga di ' . htmlspecialchars($kecamatan) : 'Data Semua Pendaftar' ?>
+                    </h5>
                     <div>
-                        <a href="export-excel.php" class="btn btn-success btn-sm">
+                        <a href="export-excel.php<?= $kecamatan ? '?kecamatan='.urlencode($kecamatan) : '' ?>" class="btn btn-success btn-sm">
                             <i class="bi bi-file-excel me-1"></i>Export Excel
                         </a>
                     </div>

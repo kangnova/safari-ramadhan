@@ -1,23 +1,35 @@
 <?php
 session_start();
 require_once 'koneksi.php';
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $username = $_POST['username'];
     $password = $_POST['password'];
-    try {
-        $stmt = $conn->prepare("SELECT * FROM pengisi WHERE username = ?");
-        $stmt->execute([$username]);
-        $pengisi = $stmt->fetch();
-        if ($pengisi && password_verify($password, $pengisi['password'])) {
-            $_SESSION['pengisi_id'] = $pengisi['id'];
-            $_SESSION['pengisi_nama'] = $pengisi['nama'];
-            header("Location: dashboard_p.php");
-            exit();
-        } else {
-            $error = "Username atau Password salah!";
+    
+    // Cek Login Admin (Hardcoded sesuai request)
+    if ($username === 'admin' && $password === 'gnbyes!') {
+        $_SESSION['authenticated'] = true;
+        header("Location: admin/index.php");
+        exit();
+    } 
+    // Cek Login Pengisi (Database)
+    else {
+        try {
+            $stmt = $conn->prepare("SELECT * FROM pengisi WHERE username = ?");
+            $stmt->execute([$username]);
+            $pengisi = $stmt->fetch();
+            
+            if ($pengisi && password_verify($password, $pengisi['password'])) {
+                $_SESSION['pengisi_id'] = $pengisi['id'];
+                $_SESSION['pengisi_nama'] = $pengisi['nama'];
+                header("Location: dashboard_p.php");
+                exit();
+            } else {
+                $error = "Username atau Password salah!";
+            }
+        } catch(PDOException $e) {
+            $error = "Error: " . $e->getMessage();
         }
-    } catch(PDOException $e) {
-        $error = "Error: " . $e->getMessage();
     }
 }
 ?>
@@ -26,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login Pengisi - Safari Ramadhan 2025</title>
+    <title>Login - Safari Ramadhan 2025</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body {
@@ -60,7 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <div class="card login-card">
                     <div class="login-header">
                         <img src="img/logo.png" alt="Logo Safari Ramadhan" class="logo">
-                        <h3>Login Pengisi Safari Ramadhan</h3>
+                        <h3>Login Safari Ramadhan</h3>
                         <p class="mb-0">Masukkan username dan password Anda</p>
                     </div>
                     <div class="login-body">

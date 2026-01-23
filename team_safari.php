@@ -375,6 +375,11 @@ try {
             <li class="cta-button"><a href="jadwal_safariramadhan.php" class="donate-btn">Jadwal Safari</a></li>
             <li class="cta-button"><a href="form.php" class="donate-btn daftar-online">Daftar Online</a></li>
             <li class="cta-button"><a href="donasi.php" class="donate-btn donasi">Donasi</a></li>
+            <li class="cta-button">
+                <a href="login_p.php" class="btn-login-nav" title="Login">
+                    <i class='bx bx-log-in'></i>
+                </a>
+            </li>
         </ul>
     </nav>
 

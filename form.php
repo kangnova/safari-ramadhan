@@ -1,6 +1,19 @@
 <?php
 require_once 'koneksi.php';
 require_once 'hit_counter.php';
+
+// Check Quota
+$currentYear = date('Y');
+$stmtQ = $conn->prepare("SELECT setting_value FROM settings WHERE setting_key = 'safari_quota'");
+$stmtQ->execute();
+$quotaSafari = (int)$stmtQ->fetchColumn();
+if($quotaSafari == 0) $quotaSafari = 170; // Hard fallback
+
+$stmtC = $conn->prepare("SELECT COUNT(*) FROM lembaga WHERE YEAR(created_at) = :tahun");
+$stmtC->execute(['tahun' => $currentYear]);
+$currentCount = (int)$stmtC->fetchColumn();
+
+$quotaFull = $currentCount >= $quotaSafari;
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -561,6 +574,22 @@ require_once 'hit_counter.php';
             });
         });
 
+    </script>
+    <?php if ($quotaFull): ?>
+        <?php include 'modal_form.php'; ?>
+        <script>
+            // Disable form inputs immediately
+            document.addEventListener('DOMContentLoaded', function() {
+                var form = document.querySelector('form');
+                if(form) {
+                    var inputs = form.querySelectorAll('input, select, textarea, button');
+                    inputs.forEach(function(input) {
+                        input.disabled = true;
+                    });
+                }
+            });
+        </script>
+    <?php endif; ?>
     </script>
 </body>
 </html>

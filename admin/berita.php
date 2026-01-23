@@ -32,7 +32,8 @@ function createSlug($string) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     
-<script src="https://cdn.ckeditor.com/4.22.1/standard/ckeditor.js"></script>
+    <!-- Summernote CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
     <?php include 'includes/header.php'; ?>
@@ -126,7 +127,7 @@ function createSlug($string) {
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Konten</label>
-                            <textarea class="form-control" name="konten" id="editor1"></textarea>
+                            <textarea class="form-control summernote" name="konten"></textarea>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Gambar</label>
@@ -172,8 +173,7 @@ function createSlug($string) {
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Konten</label>
-                            <textarea class="form-control editor2" name="konten" 
-                                      id="editor<?= $berita['id_berita'] ?>"><?= htmlspecialchars($berita['konten']) ?></textarea>
+                            <textarea class="form-control summernote" name="konten"><?= htmlspecialchars($berita['konten']) ?></textarea>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Gambar Saat Ini</label>
@@ -205,47 +205,36 @@ function createSlug($string) {
     </div>
     <?php endforeach; ?>
 
+    <!-- jQuery & Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-    // Initialize CKEditor for new berita
-    CKEDITOR.replace('editor1', {
-        removePlugins: 'exportpdf',
-        height: '300px',
-        toolbar: [
-            { name: 'document', items: [ 'Source', '-', 'NewPage', 'Preview', '-', 'Templates' ] },
-            { name: 'clipboard', items: [ 'Cut', 'Copy', 'Paste', 'PasteText', '-', 'Undo', 'Redo' ] },
-            { name: 'basicstyles', items: [ 'Bold', 'Italic', 'Underline', 'Strike', 'Subscript', 'Superscript', '-', 'RemoveFormat' ] },
-            { name: 'paragraph', items: [ 'NumberedList', 'BulletedList', '-', 'Outdent', 'Indent', '-', 'Blockquote', 'CreateDiv', '-', 'JustifyLeft', 'JustifyCenter', 'JustifyRight', 'JustifyBlock' ] },
-            { name: 'links', items: [ 'Link', 'Unlink' ] },
-            { name: 'insert', items: [ 'Image', 'Table', 'HorizontalRule', 'SpecialChar' ] },
-            { name: 'styles', items: [ 'Styles', 'Format', 'Font', 'FontSize' ] },
-            { name: 'colors', items: [ 'TextColor', 'BGColor' ] }
-        ]
-    });
+    <!-- Summernote JS -->
+    <script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.js"></script>
 
-    // Initialize CKEditor for each edit form
-    <?php foreach ($beritas as $berita): ?>
-    CKEDITOR.replace('editor<?= $berita['id_berita'] ?>', {
-        removePlugins: 'exportpdf',
-        height: '300px',
-        toolbar: [
-            { name: 'document', items: [ 'Source', '-', 'NewPage', 'Preview', '-', 'Templates' ] },
-            { name: 'clipboard', items: [ 'Cut', 'Copy', 'Paste', 'PasteText', '-', 'Undo', 'Redo' ] },
-            { name: 'basicstyles', items: [ 'Bold', 'Italic', 'Underline', 'Strike', 'Subscript', 'Superscript', '-', 'RemoveFormat' ] },
-            { name: 'paragraph', items: [ 'NumberedList', 'BulletedList', '-', 'Outdent', 'Indent', '-', 'Blockquote', 'CreateDiv', '-', 'JustifyLeft', 'JustifyCenter', 'JustifyRight', 'JustifyBlock' ] },
-            { name: 'links', items: [ 'Link', 'Unlink' ] },
-            { name: 'insert', items: [ 'Image', 'Table', 'HorizontalRule', 'SpecialChar' ] },
-            { name: 'styles', items: [ 'Styles', 'Format', 'Font', 'FontSize' ] },
-            { name: 'colors', items: [ 'TextColor', 'BGColor' ] }
-        ]
+    <script>
+    $(document).ready(function() {
+        // Initialize Summernote
+        $('.summernote').summernote({
+            placeholder: 'Tulis konten berita di sini...',
+            tabsize: 2,
+            height: 300,
+            toolbar: [
+                ['style', ['style']],
+                ['font', ['bold', 'underline', 'clear']],
+                ['color', ['color']],
+                ['para', ['ul', 'ol', 'paragraph']],
+                ['table', ['table']],
+                ['insert', ['link', 'picture', 'video']],
+                ['view', ['fullscreen', 'codeview', 'help']]
+            ]
+        });
     });
-    <?php endforeach; ?>
 
     function deleteBerita(id) {
         if(confirm('Apakah anda yakin ingin menghapus berita ini?')) {
             window.location.href = 'delete_berita.php?id=' + id;
         }
     }
-</script>
+    </script>
 </body>
 </html>

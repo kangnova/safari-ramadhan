@@ -9,6 +9,7 @@ if (!isset($_SESSION['authenticated'])) {
 }
 
 // Initialize variables with default values
+$tahun = isset($_GET['tahun']) ? $_GET['tahun'] : date('Y');
 $totalPrograms = 0;
 $latestPrograms = [];
 $totalLembaga = 0;
@@ -25,54 +26,68 @@ $topPengisi = [];
 // Fetch summary data
 try {
     // Count total programs
-    // Use try-catch for individual queries or check for table existence if needed, 
-    // but simplified here: if one fails, the main catch will catch it, and variables remain defaults.
-    
-    // Check if tables exist first to avoid fatal errors if tables are missing
-    // This is optional but good practice. For now, we rely on the main catch.
-    
-    $stmt = $conn->query("SELECT COUNT(*) FROM program");
+    $stmt = $conn->prepare("SELECT COUNT(*) FROM program WHERE YEAR(tgl_update) = :tahun");
+    $stmt->execute(['tahun' => $tahun]);
     $totalPrograms = $stmt->fetchColumn();
 
-    $stmt = $conn->query("SELECT * FROM program ORDER BY tgl_update DESC LIMIT 5");
+    $stmt = $conn->prepare("SELECT * FROM program WHERE YEAR(tgl_update) = :tahun ORDER BY tgl_update DESC LIMIT 5");
+    $stmt->execute(['tahun' => $tahun]);
     $latestPrograms = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    $stmt = $conn->query("SELECT COUNT(*) FROM lembaga");
+    // Get Quota from Settings
+    $stmtQ = $conn->prepare("SELECT setting_value FROM settings WHERE setting_key = 'safari_quota'");
+    $stmtQ->execute();
+    $quotaSafari = (int)$stmtQ->fetchColumn();
+    if($quotaSafari == 0) $quotaSafari = 170; // Hard fallback
+
+    $stmt = $conn->prepare("SELECT COUNT(*) FROM lembaga WHERE YEAR(created_at) = :tahun");
+    $stmt->execute(['tahun' => $tahun]);
     $totalLembaga = $stmt->fetchColumn();
-    
-    $stmt = $conn->query("SELECT kecamatan, COUNT(*) as total FROM lembaga GROUP BY kecamatan");
+
+    $stmt = $conn->prepare("SELECT kecamatan, COUNT(*) as total FROM lembaga WHERE YEAR(created_at) = :tahun GROUP BY kecamatan");
+    $stmt->execute(['tahun' => $tahun]);
     $lembagaPerKecamatan = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    $stmt = $conn->query("SELECT * FROM lembaga ORDER BY created_at DESC LIMIT 5");
+    $stmt = $conn->prepare("SELECT * FROM lembaga WHERE YEAR(created_at) = :tahun ORDER BY created_at DESC LIMIT 5");
+    $stmt->execute(['tahun' => $tahun]);
     $latestPendaftarSafari = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    $stmt = $conn->query("SELECT COUNT(*) FROM ifthar");
+    $stmt = $conn->prepare("SELECT COUNT(*) FROM ifthar WHERE YEAR(created_at) = :tahun");
+    $stmt->execute(['tahun' => $tahun]);
     $totalIfthar = $stmt->fetchColumn();
     
-    $stmt = $conn->query("SELECT kecamatan, COUNT(*) as total FROM ifthar GROUP BY kecamatan");
+    $stmt = $conn->prepare("SELECT kecamatan, COUNT(*) as total FROM ifthar WHERE YEAR(created_at) = :tahun GROUP BY kecamatan");
+    $stmt->execute(['tahun' => $tahun]);
     $iftharPerKecamatan = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    $stmt = $conn->query("SELECT * FROM ifthar ORDER BY created_at DESC LIMIT 5");
+    $stmt = $conn->prepare("SELECT * FROM ifthar WHERE YEAR(created_at) = :tahun ORDER BY created_at DESC LIMIT 5");
+    $stmt->execute(['tahun' => $tahun]);
     $latestPendaftarIfthar = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    $stmt = $conn->query("SELECT COUNT(*) FROM persetujuan_lembaga WHERE duta_gnb = 1");
+    // Duta GNB join with Lembaga to filter by year
+    $stmt = $conn->prepare("SELECT COUNT(*) FROM persetujuan_lembaga pl JOIN lembaga l ON pl.lembaga_id = l.id WHERE pl.duta_gnb = 1 AND YEAR(l.created_at) = :tahun");
+    $stmt->execute(['tahun' => $tahun]);
     $totalDutaGNB = $stmt->fetchColumn();
 
-    $stmt = $conn->query("SELECT COUNT(*) FROM pengisi");
+    $stmt = $conn->prepare("SELECT COUNT(*) FROM pengisi");
+    $stmt->execute();
     $totalPengisi = $stmt->fetchColumn();
     
-    $stmt = $conn->query("SELECT COUNT(*) FROM jadwal_safari");
+    $stmt = $conn->prepare("SELECT COUNT(*) FROM jadwal_safari WHERE YEAR(tanggal) = :tahun");
+    $stmt->execute(['tahun' => $tahun]);
     $totalJadwal = $stmt->fetchColumn();
     
-    $stmt = $conn->query("SELECT 
+    $stmt = $conn->prepare("SELECT 
         js.pengisi,
         COUNT(*) as jumlah_jadwal,
         COUNT(CASE WHEN js.status = 'terlaksana' THEN 1 END) as jadwal_terlaksana,
         COUNT(CASE WHEN js.status = 'pending' THEN 1 END) as jadwal_pending
         FROM jadwal_safari js
+        WHERE YEAR(js.tanggal) = :tahun
         GROUP BY js.pengisi 
         ORDER BY jumlah_jadwal DESC 
         LIMIT 5");
+    $stmt->execute(['tahun' => $tahun]);
     $topPengisi = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 } catch (PDOException $e) {
@@ -100,7 +115,7 @@ try {
         <!-- Welcome Message -->
         <div class="row mb-4">
             <div class="col">
-                <h1 class="h3">Selamat Datang di Dashboard Admin</h1>
+                <h1 class="h3">Selamat Datang di Dashboard Admin <?= htmlspecialchars($tahun) ?></h1>
                 <p class="text-muted">Kelola program Safari Ramadhan dengan mudah dan efisien.</p>
             </div>
         </div>
@@ -136,7 +151,7 @@ try {
                             <div>
                                 <h6 class="card-title mb-0">Total Pendaftar Safari</h6>
                                 <h2 class="my-2"><?= $totalLembaga ?></h2>
-                                <p class="card-text mb-0">Sisa kuota: <?= 170 - $totalLembaga ?> dari 170</p>
+                                <p class="card-text mb-0">Sisa kuota: <?= max(0, $quotaSafari - $totalLembaga) ?> dari <?= $quotaSafari ?></p>
                             </div>
                             <i class="bi bi-people fs-1"></i>
                         </div>
@@ -177,14 +192,7 @@ try {
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <h6 class="card-title mb-0">Duta GNB</h6>
-                        <h2 class="my-2">
-    <?php
-    $query = "SELECT COUNT(*) as total FROM persetujuan_lembaga WHERE duta_gnb = 1";
-    $result = $conn->query($query);
-    $data = $result->fetch(PDO::FETCH_ASSOC);
-    echo $data['total'];
-    ?>
-</h2>
+                        <h2 class="my-2"><?= $totalDutaGNB ?></h2>
                         <p class="card-text mb-0">Pendaftar bersedia</p>
                     </div>
                     <i class="bi bi-star fs-1"></i>
@@ -205,23 +213,8 @@ try {
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
     <h6 class="card-title mb-0">Pengisi Safari</h6>
-    <h2 class="my-2">
-        <?php
-        $query = "SELECT COUNT(*) as total FROM pengisi WHERE status='aktif'";
-        $result = $conn->query($query);
-        $data = $result->fetch();
-        echo $data['total'];
-        ?>
-    </h2>
-    <p class="card-text mb-0">Total 
-        <?php
-        $query = "SELECT COUNT(*) as total FROM jadwal_safari";
-        $result = $conn->query($query);
-        $data = $result->fetch();
-        echo $data['total'];
-        ?> 
-        Jadwal
-    </p>
+    <h2 class="my-2"><?= $totalPengisi ?></h2>
+    <p class="card-text mb-0">Total <?= $totalJadwal ?> Jadwal</p>
 </div>
                     <i class="bi bi-person-video3 fs-1"></i>
                 </div>

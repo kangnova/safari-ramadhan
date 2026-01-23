@@ -3,19 +3,24 @@ require_once 'koneksi.php';
 
 // Cek jumlah pendaftar di database
 try {
-    // Cek total lembaga safari
-    $query = "SELECT COUNT(*) as total FROM lembaga";
-    $stmt = $conn->query($query);
+    $currentYear = date('Y');
+    
+    // Cek total lembaga safari (Current Year)
+    $query = "SELECT COUNT(*) as total FROM lembaga WHERE YEAR(created_at) = :tahun";
+    $stmt = $conn->prepare($query);
+    $stmt->execute(['tahun' => $currentYear]);
     $result = $stmt->fetch(PDO::FETCH_ASSOC);
     $total_lembaga = $result['total'];
 
-    // Cek total pendaftar ifthar
-    $query = "SELECT COUNT(*) as total FROM ifthar";
-    $stmt = $conn->query($query);
+    // Cek total pendaftar ifthar (Current Year)
+    $query = "SELECT COUNT(*) as total FROM ifthar WHERE YEAR(created_at) = :tahun";
+    $stmt = $conn->prepare($query);
+    $stmt->execute(['tahun' => $currentYear]);
     $result = $stmt->fetch(PDO::FETCH_ASSOC);
     $total_ifthar = $result['total'];
 
 } catch (PDOException $e) {
+    echo "<!-- Database Error: " . $e->getMessage() . " -->";
     $total_lembaga = 0;
     $total_ifthar = 0;
 }
@@ -26,34 +31,16 @@ $tanggal_sekarang = strtotime(date('Y-m-d'));
 $is_expired = $tanggal_sekarang >= $batas_tanggal;
 
 // Cek kuota
-$is_safari_full = $total_lembaga >= 170;
+// Ambil setting quota
+$stmtQ = $conn->prepare("SELECT setting_value FROM settings WHERE setting_key = 'safari_quota'");
+$stmtQ->execute();
+$quotaSafari = (int)$stmtQ->fetchColumn();
+if($quotaSafari == 0) $quotaSafari = 170;
+
+$is_safari_full = $total_lembaga >= $quotaSafari;
 $is_ifthar_full = $total_ifthar >= 43;
 ?>
 
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pendaftaran Safari Ramadhan & Ifthar 1000 Santri</title>
-    
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- SweetAlert2 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
-    
-    <style>
-        .swal2-popup {
-            font-size: 1rem !important;
-        }
-        .text-left {
-            text-align: left !important;
-        }
-    </style>
-</head>
-<body>
-
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     showFormOptions();
@@ -63,6 +50,7 @@ function showFormOptions() {
     const isExpired = <?php echo $is_expired ? 'true' : 'false' ?>;
     const isSafariFull = <?php echo $is_safari_full ? 'true' : 'false' ?>;
     const isIftharFull = <?php echo $is_ifthar_full ? 'true' : 'false' ?>;
+    
     
     if (isExpired || isSafariFull) {
         // Jika Safari sudah tutup tapi Ifthar masih buka
@@ -107,7 +95,7 @@ function showFormOptions() {
                 <div class="text-left">
                     <p class="mb-3">Silakan pilih form pendaftaran:</p>
                     <p>1. Form Safari Ramadhan 1446 H/2025</p>
-                    <p class="text-muted"><small>Sisa kuota: ${170 - <?= $total_lembaga ?>}</small></p>
+                    <p class="text-muted"><small>Sisa kuota: ${<?= $quotaSafari ?> - <?= $total_lembaga ?>}</small></p>
                     ${!isIftharFull ? `
                     <p>2. Form Ifthar 1000 Santri</p>
                     <p class="text-muted"><small>Sisa kuota: ${200 - <?= $total_ifthar ?>}</small></p>
@@ -125,7 +113,28 @@ function showFormOptions() {
             cancelButtonColor: '#d33'
         }).then((result) => {
             if (result.isConfirmed) {
-                window.location.href = 'form.php';
+                // Stay on form.php (Safari)
+                // Need to remove disabled state if we allow proceed, BUT here we are inside logic that runs if not full?
+                // Wait. form.php includes this ONLY IF quota is full.
+                // Ah! The original logic of modal_form.php was to run on Index or as a Gatekeeper.
+                
+                // User Request: "jika batas kuota sudah tercapai maka tampilkan modal_form"
+                // So this script runs ONLY when quota IS full (via form.php include).
+                // But modal_form.php logic has an "else" block (Line 45 in replacement) for when it's NOT full.
+                // If included in form.php inside `if($quotaFull)`, then `$is_safari_full` will be true.
+                // So it will correctly fall into the first block (Expired or Full).
+                
+                // However, I should probably remove the "else" block or redundant checks if it's ONLY used for Quota Full now.
+                // BUT, to keep it "dynamic" and potentially reusable, I'll leave the logic but rely on the variables.
+                // Since $is_safari_full will be calculated at top of file, it should be correct.
+                
+                // One detail: In form.php, I disabled inputs.
+                // If the user clicks "Back" or "Close", they stay on the disabled form. Correct.
+                
+                // What if they click "Safari Ramadhan" in the "Else" block? (Which shouldn't happen if quota is full).
+                // They stay on form.php.
+                
+                // OK, logic holds.
             } else if (result.isDenied) {
                 window.location.href = 'form_ifthar.php';
             } else {
@@ -135,9 +144,3 @@ function showFormOptions() {
     }
 }
 </script>
-
-<!-- Bootstrap JS -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-</body>
-</html>

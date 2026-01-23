@@ -17,6 +17,14 @@ try {
         exit();
     }
 
+    // Increment jumlah pembaca
+    $updateQuery = "UPDATE berita SET dibaca = COALESCE(dibaca, 0) + 1 WHERE id_berita = :id_berita";
+    $updateStmt = $conn->prepare($updateQuery);
+    $updateStmt->execute([':id_berita' => $berita['id_berita']]);
+
+    // Update data berita yang ditampilkan (agar jumlah pembaca real-time)
+    $berita['dibaca'] = isset($berita['dibaca']) ? $berita['dibaca'] + 1 : 1;
+
     // Ambil berita terkait
     $query = "SELECT * FROM berita 
               WHERE status = 'published' 
@@ -47,16 +55,23 @@ try {
     <meta property="og:url" content="https://gnb.or.id/safariramadhan/baca_berita.php?slug=<?= $berita['slug'] ?>">
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>
         body {
-            padding-top: 60px;
+            padding-top: 80px; /* Adjusted for fixed navbar */
             background-color: #f8f9fa;
         }
         
-        .navbar {
+        /* Remove conflicting .navbar styles */
+
+        .article-header {
             background-color: white;
-            box-shadow: 0 2px 4px rgba(0,0,0,.1);
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,.1);
+            margin-top: 20px;
         }
 
         .article-header {
@@ -155,13 +170,15 @@ try {
     </style>
 </head>
 <body>
-    <?php include 'nav.php'; ?>
+    <?php include 'navbar.php'; ?>
 
     <div class="article-header">
         <div class="container">
             <h1 class="mb-3"><?= htmlspecialchars($berita['judul']) ?></h1>
             <div class="article-meta">
                 <i class="bi bi-calendar3"></i> <?= date('d F Y', strtotime($berita['tgl_posting'])) ?>
+                <span class="mx-2">|</span>
+                <i class="bi bi-eye"></i> Dibaca <?= number_format($berita['dibaca'] ?? 0) ?> kali
             </div>
         </div>
     </div>

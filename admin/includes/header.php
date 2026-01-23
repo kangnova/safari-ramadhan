@@ -51,6 +51,11 @@ $menuGroups = [
                 'title' => 'Slide Utama',
                 'icon' => 'images',
                 'link' => 'kelola_slide.php'
+            ],
+            [
+                'title' => 'Tim Safari',
+                'icon' => 'people',
+                'link' => 'pengisi.php'
             ]
         ]
     ],
@@ -83,11 +88,6 @@ $menuGroups = [
                 'title' => 'Jadwal',
                 'icon' => 'calendar-date',
                 'link' => 'jadwal.php'
-            ],
-            [
-                'title' => 'Pengisi',
-                'icon' => 'person-video3',
-                'link' => 'pengisi.php'
             ]
         ]
     ],

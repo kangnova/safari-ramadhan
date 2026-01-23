@@ -70,27 +70,50 @@ try {
         <li class="cta-button"><a href="jadwal_safariramadhan.php" class="donate-btn">Jadwal Safari</a></li>
         <li class="cta-button"><a href="form.php" class="donate-btn daftar-online">Daftar Online</a></li>
         <li class="cta-button"><a href="donasi.php" class="donate-btn donasi">Donasi</a></li>
+        <li class="cta-button">
+            <a href="login_p.php" class="btn-login-nav" title="Login">
+                <i class='bx bx-log-in'></i>
+            </a>
+        </li>
     </ul>
 </nav>
 
-    <!-- Hero Section- -->
+    <!-- Hero Section -->
     <section id="hero" class="hero">
+        <?php
+        // Fetch hero slides
+        try {
+            $stmt = $conn->prepare("SELECT * FROM hero_slides WHERE aktif = 1 ORDER BY urutan ASC");
+            $stmt->execute();
+            $hero_slides = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch(PDOException $e) {
+            $hero_slides = [];
+        }
+        ?>
+
         <div class="slider desktop-only">
-            <div class="slide">
-                <div class="slide-content">
-                    <img src="img/gbr6.jpg" alt="Slide 1">
+            <?php if (!empty($hero_slides)): ?>
+                <?php foreach ($hero_slides as $slide): ?>
+                <div class="slide">
+                    <div class="slide-content">
+                        <?php if (!empty($slide['link'])): ?>
+                            <a href="<?= htmlspecialchars($slide['link']) ?>">
+                                <img src="img/slides/<?= htmlspecialchars($slide['gambar']) ?>" alt="<?= htmlspecialchars($slide['judul']) ?>">
+                            </a>
+                        <?php else: ?>
+                            <img src="img/slides/<?= htmlspecialchars($slide['gambar']) ?>" alt="<?= htmlspecialchars($slide['judul']) ?>">
+                        <?php endif; ?>
+                    </div>
                 </div>
-            </div>
-            <div class="slide">
-                <div class="slide-content">
-                    <img src="img/gbr1.jpg" alt="Slide 2">
+                <?php endforeach; ?>
+            <?php else: ?>
+                <!-- Fallback Text -->
+                <div class="slide">
+                    <div class="slide-content" style="display: flex; justify-content: center; align-items: center; background-color: #f8f9fa;">
+                        <h3 style="color: #6c757d; font-weight: normal;">Belum ada banner yang aktif</h3>
+                    </div>
                 </div>
-            </div>
-            <div class="slide">
-                <div class="slide-content">
-                    <img src="img/gbr3.jpg" alt="Slide 3">
-                </div>
-            </div>
+            <?php endif; ?>
         </div>
 
         <div class="slider-nav">
@@ -99,9 +122,13 @@ try {
         </div>
 
         <div class="slider-dots">
-            <div class="dot active"></div>
-            <div class="dot"></div>
-            <div class="dot"></div>
+            <?php if (!empty($hero_slides)): ?>
+                <?php foreach ($hero_slides as $index => $slide): ?>
+                    <div class="dot <?= $index === 0 ? 'active' : '' ?>"></div>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <div class="dot active"></div>
+            <?php endif; ?>
         </div>
     </section>
     
