@@ -25,10 +25,21 @@ try {
         throw new Exception('Format email tidak valid');
     }
 
-    // Validasi format nomor HP
-    if (!preg_match('/^08[0-9]{8,11}$/', $_POST['no_hp'])) {
-        throw new Exception('Format nomor HP tidak valid (gunakan format: 08xxxxxxxxxx)');
+    // Format nomor HP ke 62
+    $no_hp = preg_replace('/[^0-9]/', '', $_POST['no_hp']);
+    if (substr($no_hp, 0, 1) === '0') {
+        $no_hp = '62' . substr($no_hp, 1);
+    } elseif (substr($no_hp, 0, 1) === '8') {
+        $no_hp = '62' . $no_hp;
     }
+
+    // Validasi format nomor HP (sekarang harus dimulai dengan 62)
+    if (!preg_match('/^62[0-9]{8,13}$/', $no_hp)) {
+        throw new Exception('Format nomor HP tidak valid (gunakan format: 08xx atau 628xx)');
+    }
+    
+    // Update $_POST value for subsequent use
+    $_POST['no_hp'] = $no_hp;
 
     // Validasi jumlah santri
     if (!is_numeric($_POST['jumlah_santri']) || $_POST['jumlah_santri'] < 1) {
@@ -44,7 +55,7 @@ try {
 
     // Cek duplikasi nomor HP
     $stmt = $conn->prepare("SELECT id FROM ifthar WHERE no_hp = ?");
-    $stmt->execute([$_POST['no_hp']]);
+    $stmt->execute([$no_hp]);
     if ($stmt->rowCount() > 0) {
         throw new Exception('Nomor HP sudah terdaftar');
     }
@@ -67,7 +78,7 @@ try {
     $params = [
         ':email' => $_POST['email'],
         ':nama_lengkap' => $_POST['nama_lengkap'],
-        ':no_hp' => $_POST['no_hp'],
+        ':no_hp' => $no_hp,
         ':asal_lembaga' => $_POST['asal_lembaga'],
         ':jumlah_santri' => $_POST['jumlah_santri'],
         ':santri_yatim' => !empty($_POST['santri_yatim']) ? $_POST['santri_yatim'] : null

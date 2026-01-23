@@ -10,6 +10,8 @@ if (!isset($_SESSION['authenticated'])) {
 require_once '../koneksi.php';
 
 // Initialize variables
+$tahun = isset($_GET['tahun']) ? $_GET['tahun'] : date('Y');
+
 $stats = [
     'total_lembaga' => 0,
     'total_santri' => 0,
@@ -26,20 +28,39 @@ try {
             SUM(jumlah_santri) as total_santri,
             COUNT(CASE WHEN santri_yatim IS NOT NULL THEN 1 END) as total_pengajuan_yatim,
             COUNT(CASE WHEN status = 'approved' THEN 1 END) as total_approved
-        FROM ifthar";
+        FROM ifthar
+        WHERE YEAR(created_at) = :tahun";
 
     $stmtStats = $conn->prepare($queryStatistik);
-    $stmtStats->execute();
+    $stmtStats->execute(['tahun' => $tahun]);
     $fetchedStats = $stmtStats->fetch(PDO::FETCH_ASSOC);
     if ($fetchedStats) {
         $stats = $fetchedStats;
     }
 
     // Query untuk data pendaftar
-    $query = "SELECT * FROM ifthar ORDER BY created_at DESC";
+    $query = "SELECT * FROM ifthar WHERE YEAR(created_at) = :tahun ORDER BY created_at DESC";
     $stmt = $conn->prepare($query);
-    $stmt->execute();
+    $stmt->execute(['tahun' => $tahun]);
     $pendaftar = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Handle Quota Update
+    if (isset($_POST['update_quota'])) {
+        $newQuota = (int)$_POST['quota'];
+        $stmtUpdate = $conn->prepare("UPDATE settings SET setting_value = :quota WHERE setting_key = 'ifthar_quota'");
+        $stmtUpdate->execute(['quota' => $newQuota]);
+        // Refresh page to show new value
+        echo "<script>alert('Kuota berhasil diperbarui!'); window.location.href='pendaftar_ifthar.php';</script>";
+        exit;
+    }
+
+    // Fetch Current Quota
+    $stmtQ = $conn->prepare("SELECT setting_value FROM settings WHERE setting_key = 'ifthar_quota'");
+    $stmtQ->execute();
+    $quotaIfthar = (int)$stmtQ->fetchColumn();
+    // Default fallback if not set
+    if ($quotaIfthar == 0) $quotaIfthar = 200;
+
 } catch (PDOException $e) {
     error_log("Database Error in pendaftar_ifthar.php: " . $e->getMessage());
 }
@@ -104,7 +125,58 @@ try {
     <?php require_once 'includes/header.php'; ?>
 
     <div class="container-fluid mt-4 px-4">
+        <!-- Filter Card -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <form method="GET" class="row g-3 align-items-center">
+                    <div class="col-auto">
+                        <label for="tahun" class="col-form-label fw-bold">Pilih Tahun:</label>
+                    </div>
+                    <div class="col-auto">
+                        <select name="tahun" id="tahun" class="form-select" onchange="this.form.submit()">
+                            <?php
+                            $currentYear = date('Y');
+                            for ($i = $currentYear; $i >= $currentYear - 2; $i--) {
+                                $selected = ($i == $tahun) ? 'selected' : '';
+                                echo "<option value='$i' $selected>$i</option>";
+                            }
+                            ?>
+                        </select>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         <h2 class="text-center mb-4">Dashboard Ifthar 1000 Santri</h2>
+
+        <!-- Pengaturan Kuota Card -->
+        <div class="row justify-content-center mb-4">
+            <div class="col-md-6">
+                <div class="card border-primary shadow-sm">
+                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-gear-fill me-2"></i>Pengaturan Kuota Ifthar</h5>
+                        <span class="badge bg-light text-primary">
+                            Terisi: <?= $stats['total_lembaga'] ?> / Batas: <?= $quotaIfthar ?>
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" class="d-flex gap-2">
+                            <div class="flex-grow-1">
+                                <label for="quota" class="form-label visually-hidden">Batas Kuota</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">Maksimal Pendaftar</span>
+                                    <input type="number" class="form-control" id="quota" name="quota" 
+                                           value="<?= $quotaIfthar ?>" min="1" required>
+                                </div>
+                            </div>
+                            <button type="submit" name="update_quota" class="btn btn-primary">
+                                <i class="bi bi-save me-1"></i>Simpan
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
         
         <!-- Statistik -->
         <div class="row mb-4">

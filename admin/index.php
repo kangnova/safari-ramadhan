@@ -40,6 +40,11 @@ try {
     $quotaSafari = (int)$stmtQ->fetchColumn();
     if($quotaSafari == 0) $quotaSafari = 170; // Hard fallback
 
+    $stmtQ = $conn->prepare("SELECT setting_value FROM settings WHERE setting_key = 'ifthar_quota'");
+    $stmtQ->execute();
+    $iftharQuota = (int)$stmtQ->fetchColumn();
+    if($iftharQuota == 0) $iftharQuota = 200; // Hard fallback
+
     $stmt = $conn->prepare("SELECT COUNT(*) FROM lembaga WHERE YEAR(created_at) = :tahun");
     $stmt->execute(['tahun' => $tahun]);
     $totalLembaga = $stmt->fetchColumn();
@@ -172,7 +177,7 @@ try {
                             <div>
                                 <h6 class="card-title mb-0">Total Pendaftar Ifthar</h6>
                                 <h2 class="my-2"><?= $totalIfthar ?></h2>
-                                <p class="card-text mb-0">Sisa kuota: <?= 200 - $totalIfthar ?> dari 200</p>
+                                <p class="card-text mb-0">Sisa kuota: <?= $iftharQuota - $totalIfthar ?> dari <?= $iftharQuota ?></p>
                             </div>
                             <i class="bi bi-people-fill fs-1"></i>
                         </div>

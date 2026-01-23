@@ -1,6 +1,27 @@
 <?php
 require_once 'koneksi.php';
 require_once 'hit_counter.php';
+
+// Check Quota Ifthar
+$currentYear = date('Y');
+try {
+    // Get Quota
+    $stmtQ = $conn->prepare("SELECT setting_value FROM settings WHERE setting_key = 'ifthar_quota'");
+    $stmtQ->execute();
+    $quotaIfthar = (int)$stmtQ->fetchColumn();
+    if($quotaIfthar == 0) $quotaIfthar = 200; // Hard fallback
+
+    // Get Current Count
+    $stmtC = $conn->prepare("SELECT COUNT(*) FROM ifthar WHERE YEAR(created_at) = :tahun");
+    $stmtC->execute(['tahun' => $currentYear]);
+    $currentCount = (int)$stmtC->fetchColumn();
+
+    $isFull = $currentCount >= $quotaIfthar;
+
+} catch (PDOException $e) {
+    $isFull = false;
+    error_log("Error checking quota: " . $e->getMessage());
+}
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -8,6 +29,8 @@ require_once 'hit_counter.php';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pendaftaran Ifthar 1000 Santri</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <style>
         * {
             margin: 0;
@@ -18,7 +41,7 @@ require_once 'hit_counter.php';
 
         .form-container {
             max-width: 800px;
-            margin: 2rem auto;
+            margin: 6rem auto 2rem;
             padding: 2rem;
             background: white;
             border-radius: 10px;
@@ -133,8 +156,9 @@ require_once 'hit_counter.php';
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
+    <?php require_once 'navbar.php'; ?>
     <div class="form-container">
-        <h2 class="form-title">PENDAFTARAN IFTHAR 1000 SANTRI 1446 H/2025</h2>
+        <h2 class="form-title">PENDAFTARAN IFTHAR 1000 SANTRI <?= (date('Y') - 579) ?> H/<?= date('Y') ?></h2>
         
         <div class="form-description">
             <p>Bulan Ramadhan adalah waktu yang sangat dinanti oleh umat Muslim di seluruh dunia. Bulan yang penuh berkah dan menjadi waktu yang tepat untuk berbagi, mempererat tali silaturahmi dan saling membantu sesama.</p>
@@ -172,7 +196,7 @@ require_once 'hit_counter.php';
             <div class="form-group">
                 <label class="required">No HP</label>
                 <input type="tel" name="no_hp" required pattern="[0-9]{10,13}">
-                <div class="error-message">Nomor HP wajib diisi (format: 08xxxxxxxxxx)</div>
+                <div class="error-message">Nomor HP wajib diisi (contoh: 08123xxx atau 628123xxx)</div>
             </div>
 
             <div class="form-group">
@@ -256,6 +280,47 @@ require_once 'hit_counter.php';
 
             return valid;
         }
+
+        // Auto-format phone number
+        const phoneInput = form.querySelector('input[name="no_hp"]');
+        phoneInput.addEventListener('input', function(e) {
+            let value = this.value;
+            
+            // Hapus karakter non-angka
+            value = value.replace(/\D/g, '');
+            
+            // Cek awalan
+            if (value.startsWith('0')) {
+                value = '62' + value.substring(1);
+            } else if (value.startsWith('8')) {
+                value = '62' + value;
+            }
+            
+            this.value = value;
+        });
     </script>
-</body>
-</html>
+
+    <?php if(isset($isFull) && $isFull): ?>
+        <?php include 'modal_form.php'; ?>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                // Disable all inputs
+                const inputs = document.querySelectorAll('input, textarea, button, select');
+                inputs.forEach(input => {
+                    input.disabled = true;
+                    input.classList.add('disabled');
+                });
+                
+                // Show floating message
+                const formContainer = document.querySelector('.form-container');
+                const warningDiv = document.createElement('div');
+                warningDiv.className = 'alert alert-danger text-center mb-3';
+                warningDiv.style.color = 'red';
+                warningDiv.style.fontWeight = 'bold';
+                warningDiv.innerHTML = 'Mohon maaf, kuota pendaftaran Ifthar 1000 Santri telah penuh.';
+                formContainer.insertBefore(warningDiv, formContainer.firstChild);
+            });
+        </script>
+    <?php endif; ?>
+
+    <?php require_once 'footer.php'; ?>

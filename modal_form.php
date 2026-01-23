@@ -37,8 +37,13 @@ $stmtQ->execute();
 $quotaSafari = (int)$stmtQ->fetchColumn();
 if($quotaSafari == 0) $quotaSafari = 170;
 
+$stmtQ = $conn->prepare("SELECT setting_value FROM settings WHERE setting_key = 'ifthar_quota'");
+$stmtQ->execute();
+$quotaIfthar = (int)$stmtQ->fetchColumn();
+if($quotaIfthar == 0) $quotaIfthar = 200;
+
 $is_safari_full = $total_lembaga >= $quotaSafari;
-$is_ifthar_full = $total_ifthar >= 43;
+$is_ifthar_full = $total_ifthar >= $quotaIfthar;
 ?>
 
 <script>
@@ -60,7 +65,7 @@ function showFormOptions() {
                 html: `
                     <p class="mb-4">Pendaftaran Safari Ramadhan telah ditutup.</p>
                     <p>Silakan melanjutkan ke pendaftaran Ifthar 1000 Santri.</p>
-                    <p class="mb-0 text-muted"><small>Sisa kuota: ${200 - <?= $total_ifthar ?>}</small></p>
+                    <p class="mb-0 text-muted"><small>Sisa kuota: ${<?= $quotaIfthar ?> - <?= $total_ifthar ?>}</small></p>
                 `,
                 icon: 'info',
                 showCancelButton: true,
@@ -98,7 +103,7 @@ function showFormOptions() {
                     <p class="text-muted"><small>Sisa kuota: ${<?= $quotaSafari ?> - <?= $total_lembaga ?>}</small></p>
                     ${!isIftharFull ? `
                     <p>2. Form Ifthar 1000 Santri</p>
-                    <p class="text-muted"><small>Sisa kuota: ${200 - <?= $total_ifthar ?>}</small></p>
+                    <p class="text-muted"><small>Sisa kuota: ${<?= $quotaIfthar ?> - <?= $total_ifthar ?>}</small></p>
                     ` : ''}
                 </div>
             `,
