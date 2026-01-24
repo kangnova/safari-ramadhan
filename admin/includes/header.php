@@ -77,6 +77,11 @@ $menuGroups = [
                 'title' => 'Duta GNB',
                 'icon' => 'star',
                 'link' => 'duta_gnb.php'
+            ],
+            [
+                'title' => 'Arsip Pendaftar',
+                'icon' => 'archive',
+                'link' => 'arsip.php'
             ]
         ]
     ],
@@ -88,6 +93,11 @@ $menuGroups = [
                 'title' => 'Jadwal',
                 'icon' => 'calendar-date',
                 'link' => 'jadwal.php'
+            ],
+            [
+                'title' => 'Arsip Jadwal',
+                'icon' => 'archive',
+                'link' => 'arsip.php?type=jadwal'
             ]
         ]
     ],

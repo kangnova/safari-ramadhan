@@ -12,17 +12,17 @@ $dutaGNB = [];
 $totalDutaGNB = 0;
 
 try {
-    // Query untuk mendapatkan data Duta GNB
+    // Query untuk mendapatkan data Duta GNB (Hanya Tahun Ini)
     $query = "SELECT l.*, pl.frekuensi_kunjungan 
               FROM lembaga l 
               INNER JOIN persetujuan_lembaga pl ON l.id = pl.lembaga_id 
-              WHERE pl.duta_gnb = 1 
+              WHERE pl.duta_gnb = 1 AND YEAR(l.created_at) = YEAR(NOW())
               ORDER BY l.created_at DESC";
     $stmt = $conn->query($query);
     $dutaGNB = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Hitung total Duta GNB
-    $stmt = $conn->query("SELECT COUNT(*) FROM persetujuan_lembaga WHERE duta_gnb = 1");
+    // Hitung total Duta GNB Tahun Ini
+    $stmt = $conn->query("SELECT COUNT(*) FROM persetujuan_lembaga pl JOIN lembaga l ON pl.lembaga_id = l.id WHERE pl.duta_gnb = 1 AND YEAR(l.created_at) = YEAR(NOW())");
     $totalDutaGNB = $stmt->fetchColumn();
 
 } catch (PDOException $e) {
@@ -47,7 +47,7 @@ try {
     <div class="container my-4">
         <div class="row mb-4">
             <div class="col">
-                <h1 class="h3">Data Duta GNB</h1>
+                <h1 class="h3">Data Duta GNB <?= date('Y') ?></h1>
                 <p class="text-muted">Menampilkan daftar lembaga yang bersedia menjadi Duta GNB</p>
             </div>
         </div>

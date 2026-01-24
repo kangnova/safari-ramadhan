@@ -68,6 +68,7 @@ try {
     $query = "SELECT js.*, l.nama_lembaga, l.alamat, l.jumlah_santri, l.penanggung_jawab, l.no_wa, l.kecamatan
               FROM jadwal_safari js
               JOIN lembaga l ON js.lembaga_id = l.id 
+              WHERE YEAR(js.tanggal) = YEAR(NOW())
               ORDER BY js.tanggal ASC, js.jam ASC";
     $stmt = $conn->prepare($query);
     $stmt->execute();
@@ -167,7 +168,7 @@ if (!empty($jadwal_list)) {
     <div class="container my-4">
         <div>
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-                    <h1 class="h2">Jadwal Safari Ramadhan</h1>
+                    <h1 class="h2">Jadwal Safari Ramadhan <?= date('Y') ?></h1>
                     <?php 
 if(isset($_SESSION['success'])): ?>
     <div class="alert alert-success alert-dismissible fade show" role="alert">
