@@ -14,7 +14,7 @@ try {
     $conn->beginTransaction();
     
     // Validasi data yang dibutuhkan
-    $required_fields = ['email', 'nama_lembaga', 'alamat', 'kecamatan', 'pj', 'no_wa'];
+    $required_fields = ['email', 'nama_lembaga', 'alamat', 'kecamatan', 'pj', 'no_wa', 'share_loc'];
     foreach($required_fields as $field) {
         if(!isset($_POST[$field]) || empty($_POST[$field])) {
             throw new Exception("Field $field harus diisi");
@@ -55,7 +55,7 @@ try {
     }
     
     // Insert lembaga dengan prepared statement
-    $stmt = $conn->prepare("INSERT INTO lembaga (email, nama_lembaga, alamat, kecamatan, jumlah_santri, jam_aktif, penanggung_jawab, jabatan, no_wa) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt = $conn->prepare("INSERT INTO lembaga (email, nama_lembaga, alamat, kecamatan, jumlah_santri, jam_aktif, penanggung_jawab, jabatan, no_wa, share_loc) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     
     if(!$stmt->execute([
         $_POST['email'],
@@ -66,7 +66,8 @@ try {
         $_POST['jam_aktif'],
         $_POST['pj'],
         $_POST['jabatan'],
-        $_POST['no_wa']
+        $_POST['no_wa'],
+        $_POST['share_loc']
     ])) {
         throw new Exception("Gagal menyimpan data lembaga");
     }

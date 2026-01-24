@@ -23,6 +23,8 @@ $quotaFull = $currentCount >= $quotaSafari;
     <title>Form Safari Ramadhan</title>
     <link rel="stylesheet" href="assets/css/style.css">
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <style>
         /* Override global styles for form specific needs */
         body {
@@ -330,9 +332,7 @@ $quotaFull = $currentCount >= $quotaSafari;
                     </select>
                 </div>
                 
-                <!-- Hidden Email field required by save.php -->
-                <input type="hidden" name="email" value="default@example.com"> 
-                <!-- Note: Adding default email since it's removed from requirements but needed by backend -->
+
 
                 <div class="form-navigation">
                     <button type="button" class="btn btn-next">Berikutnya</button>
@@ -376,9 +376,15 @@ $quotaFull = $currentCount >= $quotaSafari;
                 });
                 </script>
 
-                <!-- 9. Jabatan -->
+                <!-- 9. Email -->
                 <div class="form-group">
-                    <label class="required">9. Jabatan di Lembaga</label>
+                    <label class="required">9. Email Aktif</label>
+                    <input type="email" required name="email" placeholder="contoh@email.com">
+                </div>
+
+                <!-- 10. Jabatan -->
+                <div class="form-group">
+                    <label class="required">10. Jabatan di Lembaga</label>
                     <select required name="jabatan">
                         <option value="">Pilih Jabatan</option>
                         <option value="TAKMIR MASJID">Takmir Masjid</option>
@@ -388,9 +394,9 @@ $quotaFull = $currentCount >= $quotaSafari;
                     </select>
                 </div>
 
-                <!-- 10. Materi -->
+                <!-- 11. Materi -->
                 <div class="form-group">
-                    <label class="required">10. Materi Yang Diinginkan (Bisa pilih lebih dari 1)</label>
+                    <label class="required">11. Materi Yang Diinginkan (Bisa pilih lebih dari 1)</label>
                     <div class="checkbox-group">
                         <div class="checkbox-item">
                             <input type="checkbox" name="materi[]" value="berkisah"> Berkisah Islami
@@ -404,9 +410,9 @@ $quotaFull = $currentCount >= $quotaSafari;
                     </div>
                 </div>
 
-                <!-- 11. Frekuensi -->
+                <!-- 12. Frekuensi -->
                 <div class="form-group">
-                    <label class="required">11. Berapa kali ingin didatangi Safari GNB?</label>
+                    <label class="required">12. Berapa kali ingin didatangi Safari GNB?</label>
                     <div class="radio-group">
                         <div class="radio-item">
                             <input type="radio" name="frekuensi" value="1" required> 1 kali
@@ -420,9 +426,9 @@ $quotaFull = $currentCount >= $quotaSafari;
                     </div>
                 </div>
 
-                <!-- 12. Ketentuan & Persetujuan -->
+                <!-- 13. Ketentuan & Persetujuan -->
                 <div class="form-group">
-                    <label class="required">12. Ketentuan & Persetujuan</label>
+                    <label class="required">13. Ketentuan & Persetujuan</label>
                     <div class="notice-box">
                         <p><strong>PROGRAM SAFARI RAMADHAN INI GRATIS.</strong> Mohon PJ Lembaga menginformasikan kepada santri agar membawa Infaq Terbaiknya saja untuk mendukung program-program yayasan Guru Ngaji Berdaya secara keseluruhan.</p>
                     </div>
@@ -436,15 +442,51 @@ $quotaFull = $currentCount >= $quotaSafari;
                     </div>
                 </div>
 
-                <!-- 13. Amplop Infaq (Mapped to 'kesediaan_infaq') -->
+                <!-- 14. Amplop Infaq (Mapped to 'kesediaan_infaq') -->
                 <div class="form-group">
-                    <label class="required">13. Apakah Bersedia dititipi amplop infaq untuk tiap wali santri?</label>
+                    <label class="required">14. Apakah Bersedia dititipi amplop infaq untuk tiap wali santri?</label>
                     <div class="radio-group">
                         <div class="radio-item">
                             <input type="radio" name="kesediaan_infaq" value="ya" required> Bersedia
                         </div>
                         <div class="radio-item">
                             <input type="radio" name="kesediaan_infaq" value="tidak"> Tidak Bersedia
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 15. Share Lokasi -->
+                <div class="form-group">
+                    <label class="required">15. Share Lokasi (Google Maps)</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" required name="share_loc" id="shareLocInput" placeholder="https://maps.google.com/..." style="flex: 1;">
+                        <button type="button" class="btn btn-sm" id="openMapBtn" style="background: #20B2AA; color: white; white-space: nowrap;">
+                            <i class='bx bx-map'></i> Pilih di Peta
+                        </button>
+                    </div>
+                    <small style="color: #666; font-size: 12px; display: block; margin-top: 5px;">*Klik tombol 'Pilih di Peta' atau tempel link Google Maps secara manual</small>
+                </div>
+
+                <!-- Map Modal -->
+                <div id="mapModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center;">
+                    <div style="background: white; width: 90%; max-width: 600px; border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; max-height: 90vh;">
+                        <div style="padding: 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
+                            <h5 style="margin: 0;">Pilih Lokasi Lembaga</h5>
+                            <button type="button" id="closeMapBtn" style="border: none; background: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
+                        </div>
+                        <div style="position: relative; flex: 1; min-height: 400px; height: 400px;">
+                            <div id="map" style="width: 100%; height: 100%;"></div>
+                            <!-- Search / GPS Controls -->
+                            <div style="position: absolute; top: 10px; left: 50px; right: 10px; z-index: 1000; display: flex; gap: 5px;">
+                                <button type="button" id="locateUserBtn" style="background: white; border: 2px solid rgba(0,0,0,0.2); border-radius: 4px; padding: 5px 10px; cursor: pointer;">
+                                    <i class='bx bx-crosshair'></i> Lokasi Saya
+                                </button>
+                            </div>
+                        </div>
+                        <div style="padding: 15px; border-top: 1px solid #eee; text-align: right;">
+                            <button type="button" id="confirmLocationBtn" class="btn btn-submit" style="width: auto;">
+                                Pilih Lokasi Ini
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -590,6 +632,108 @@ $quotaFull = $currentCount >= $quotaSafari;
             });
         </script>
     <?php endif; ?>
+    </script>
+    <script>
+        // Map Implementation
+        document.addEventListener('DOMContentLoaded', function() {
+            const mapModal = document.getElementById('mapModal');
+            const openMapBtn = document.getElementById('openMapBtn');
+            const closeMapBtn = document.getElementById('closeMapBtn');
+            const confirmLocationBtn = document.getElementById('confirmLocationBtn');
+            const locateUserBtn = document.getElementById('locateUserBtn');
+            const shareLocInput = document.getElementById('shareLocInput');
+            
+            let map = null;
+            let marker = null;
+            let currentLat = -7.702; // Default Klaten
+            let currentLng = 110.603;
+
+            function initMap() {
+                if (map !== null) return; // Already initialized
+
+                map = L.map('map').setView([currentLat, currentLng], 13);
+                
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(map);
+
+                marker = L.marker([currentLat, currentLng], {
+                    draggable: true
+                }).addTo(map);
+
+                // Update marker position on click
+                map.on('click', function(e) {
+                    marker.setLatLng(e.latlng);
+                    currentLat = e.latlng.lat;
+                    currentLng = e.latlng.lng;
+                });
+
+                // Update coordinates when dragging ends
+                marker.on('dragend', function(e) {
+                    const position = marker.getLatLng();
+                    currentLat = position.lat;
+                    currentLng = position.lng;
+                });
+            }
+
+            openMapBtn.addEventListener('click', function() {
+                mapModal.style.display = 'flex';
+                // Need to invalidate size after modal opens for map to render correctly
+                setTimeout(() => {
+                    initMap();
+                    map.invalidateSize();
+                    if (marker) {
+                        map.panTo(marker.getLatLng());
+                    }
+                }, 300);
+            });
+
+            closeMapBtn.addEventListener('click', function() {
+                mapModal.style.display = 'none';
+            });
+            
+            // Close modal when clicking outside
+            mapModal.addEventListener('click', function(e) {
+                if (e.target === mapModal) {
+                    mapModal.style.display = 'none';
+                }
+            });
+
+            locateUserBtn.addEventListener('click', function() {
+                if (!navigator.geolocation) {
+                    alert("Browser Anda tidak mendukung Geolocation");
+                    return;
+                }
+                
+                locateUserBtn.innerHTML = "<i class='bx bx-loader-alt bx-spin'></i> Mencari...";
+                
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    currentLat = position.coords.latitude;
+                    currentLng = position.coords.longitude;
+                    
+                    map.setView([currentLat, currentLng], 16);
+                    marker.setLatLng([currentLat, currentLng]);
+                    
+                    locateUserBtn.innerHTML = "<i class='bx bx-crosshair'></i> Lokasi Saya";
+                }, function(error) {
+                    alert("Gagal mendapatkan lokasi: " + error.message);
+                    locateUserBtn.innerHTML = "<i class='bx bx-crosshair'></i> Lokasi Saya";
+                });
+            });
+
+            confirmLocationBtn.addEventListener('click', function() {
+                // Generate Google Maps Link
+                // Format: https://www.google.com/maps?q=lat,lng
+                // Using 6 decimal places for precision
+                const lat = parseFloat(currentLat).toFixed(6);
+                const lng = parseFloat(currentLng).toFixed(6);
+                
+                const googleMapsLink = `https://www.google.com/maps?q=${lat},${lng}`;
+                
+                shareLocInput.value = googleMapsLink;
+                mapModal.style.display = 'none';
+            });
+        });
     </script>
 </body>
 </html>

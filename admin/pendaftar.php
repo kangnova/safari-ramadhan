@@ -363,6 +363,7 @@ try {
                                 <th>Santri</th>
                                 <th>PJ</th>
                                 <th>No. WA</th>
+                                <th>Maps</th>
                                 <th width="100">Aksi</th>
                             </tr>
                         </thead>
@@ -379,6 +380,15 @@ try {
                                     <a href="https://wa.me/<?= $data['no_wa'] ?>" target="_blank">
                                         <?= $data['no_wa'] ?>
                                     </a>
+                                </td>
+                                <td>
+                                    <?php if(!empty($data['share_loc'])): ?>
+                                        <a href="<?= htmlspecialchars($data['share_loc']) ?>" target="_blank" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-geo-alt-fill"></i> Buka
+                                        </a>
+                                    <?php else: ?>
+                                        <span class="text-muted">-</span>
+                                    <?php endif; ?>
                                 </td>
                                 <td>
                                     <button class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#detailModal<?= $data['id'] ?>">
@@ -478,6 +488,11 @@ try {
                                     <a href="mailto:<?= $data['email'] ?>" class="btn btn-primary btn-sm">
                                         <i class="bi bi-envelope"></i> Kirim Email
                                     </a>
+                                    <?php if(!empty($data['share_loc'])): ?>
+                                        <a href="<?= htmlspecialchars($data['share_loc']) ?>" target="_blank" class="btn btn-info btn-sm text-white">
+                                            <i class="bi bi-geo-alt-fill"></i> Buka Maps
+                                        </a>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         </div>
