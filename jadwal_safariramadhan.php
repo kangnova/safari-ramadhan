@@ -13,11 +13,8 @@ try {
     $stmt->execute();
     $jadwal_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // Cek apakah jadwal sudah diisi
-    $show_modal = empty($jadwal_list);
 } catch(PDOException $e) {
     $error = "Error: " . $e->getMessage();
-    $show_modal = true; // Tampilkan modal jika terjadi error
 }
 ?>
 
@@ -35,7 +32,6 @@ try {
         .content-wrapper {
             margin-top: 80px;
             padding: 20px;
-            display: none; /* Sembunyikan konten sampai password benar */
         }
         
         .page-header {
@@ -195,27 +191,7 @@ try {
     <!-- Navbar -->
     <?php include 'navbar.php'; ?>
 
-    <!-- Password Modal - Hanya ditampilkan jika jadwal kosong -->
-    <?php if ($show_modal): ?>
-    <div class="modal fade password-modal" id="passwordModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="passwordModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="passwordModalLabel">Masukkan Password</h5>
-                </div>
-                <div class="modal-body">
-                    <div class="form-group">
-                        <input type="password" class="form-control" id="passwordInput" placeholder="Masukkan password">
-                        <div class="password-error" id="passwordError">
-                            Password salah! Silakan coba lagi.
-                        </div>
-                    </div>
-                    <button type="button" class="btn btn-primary mt-3 w-100" id="submitPassword">Submit</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    <?php endif; ?>
+
 
     <!-- Content -->
     <div class="content-wrapper">
@@ -285,46 +261,8 @@ try {
     
     <script>
     $(document).ready(function() {
-        const jadwalExists = <?php echo !empty($jadwal_list) ? 'true' : 'false' ?>;
-        const hasVisited = localStorage.getItem('hasVisitedBefore');
-        
-        // Logika menampilkan konten atau modal
-        if (jadwalExists || hasVisited) {
-            $('.content-wrapper').fadeIn();
-            initializeDataTable();
-        } else if (!jadwalExists && !hasVisited) {
-            $('#passwordModal').modal('show');
-        }
-        
-        // Handle submit password
-        $('#submitPassword').click(function() {
-            const password = $('#passwordInput').val();
-            if(password === "123") {
-                $('#passwordModal').modal('hide');
-                $('.content-wrapper').fadeIn();
-                
-                // Simpan status kunjungan
-                localStorage.setItem('hasVisitedBefore', 'true');
-                
-                // Inisialisasi DataTable
-                initializeDataTable();
-            } else {
-                $('#passwordError').slideDown();
-                $('#passwordInput').val('').focus();
-            }
-        });
-        
-        // Handle enter key
-        $('#passwordInput').keypress(function(e) {
-            if(e.which == 13) {
-                $('#submitPassword').click();
-            }
-        });
-        
-        // Reset error message
-        $('#passwordInput').on('input', function() {
-            $('#passwordError').slideUp();
-        });
+        // Initialize DataTable directly
+        initializeDataTable();
         
         function initializeDataTable() {
             $('#jadwalTable').DataTable({
