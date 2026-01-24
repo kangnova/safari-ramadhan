@@ -1,5 +1,6 @@
 <?php
 require_once 'koneksi.php';
+
 require_once 'hit_counter.php';
 
 // Ambil data pengisi yang aktif
