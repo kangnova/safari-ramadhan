@@ -250,251 +250,319 @@ function formatRupiah($nominal) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manajemen Pengeluaran - Donasi</title>
+    <title>Manajemen Pengeluaran - Admin</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .page-header {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
 
+        .summary-card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .summary-card .card-body {
+            position: relative;
+            z-index: 1;
+        }
+
+        .summary-card .icon-bg {
+            position: absolute;
+            right: -10px;
+            bottom: -10px;
+            font-size: 5rem;
+            opacity: 0.1;
+            z-index: 0;
+            color: white;
+        }
+
+        .bg-expense { 
+            background: linear-gradient(45deg, #dc3545, #f06548); 
+            color: white; 
+        }
+
+        .table-card {
+            border: none;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        }
+
+        .avatar-placeholder {
+            width: 40px;
+            height: 40px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #adb5bd;
+        }
+    </style>
 </head>
-<body>
-    <?php include 'includes/header.php'; ?>
-    <div class="container-fluid mt-4">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2>Manajemen Pengeluaran</h2>
-                <div>
-                    <a href="export_pengeluaran.php<?= isset($_GET['start_date']) ? '?start_date=' . $_GET['start_date'] : '' ?><?= isset($_GET['end_date']) ? '&end_date=' . $_GET['end_date'] : '' ?><?= isset($_GET['search']) ? '&search=' . urlencode($_GET['search']) : '' ?>" class="btn btn-primary me-2">
-                        <i class="fas fa-download"></i> Export Data
-                    </a>
-                    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addModal">
-                        <i class="fas fa-plus"></i> Tambah Pengeluaran
-                    </button>
-                </div>
+<body class="bg-light">
+    <?php require_once 'includes/header.php'; ?>
+    
+    <div class="container my-4">
+        
+        <!-- Page Header -->
+        <div class="page-header">
+            <div>
+                <h3 class="mb-0 fw-bold text-primary">Manajemen Pengeluaran</h3>
+                <p class="text-muted mb-0 mt-1">Kelola data pengeluaran operasional.</p>
             </div>
+            <div class="d-flex gap-2">
+                <a href="export_pengeluaran.php<?= isset($_GET['start_date']) ? '?start_date=' . $_GET['start_date'] : '' ?><?= isset($_GET['end_date']) ? '&end_date=' . $_GET['end_date'] : '' ?><?= isset($_GET['search']) ? '&search=' . urlencode($_GET['search']) : '' ?>" class="btn btn-outline-success">
+                    <i class="fas fa-file-excel me-2"></i>Export
+                </a>
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addModal">
+                    <i class="fas fa-plus me-2"></i>Tambah Baru
+                </button>
+            </div>
+        </div>
             
-            <?php if (isset($successMessage)): ?>
-                <div class="alert alert-success alert-dismissible fade show" role="alert">
-                    <?= $successMessage ?>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-            <?php endif; ?>
-            
-            <?php if (isset($errorMessage)): ?>
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                    <?= $errorMessage ?>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-            <?php endif; ?>
-            
+        <?php if (isset($successMessage)): ?>
+            <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm" role="alert">
+                <i class="fas fa-check-circle me-2"></i><?= $successMessage ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        <?php endif; ?>
+        
+        <?php if (isset($errorMessage)): ?>
+            <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm" role="alert">
+                <i class="fas fa-exclamation-circle me-2"></i><?= $errorMessage ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        <?php endif; ?>
+        
+        <div class="row g-4 mb-4">
             <!-- Summary Card -->
-            <div class="card mb-4 summary-card">
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-8">
-                            <h4 class="card-title">Total Pengeluaran</h4>
+            <div class="col-md-4">
+                <div class="card summary-card bg-expense h-100">
+                    <div class="card-body p-4">
+                        <i class="fas fa-money-bill-wave icon-bg"></i>
+                        <h6 class="text-white-50 text-uppercase fw-semibold mb-2">Total Pengeluaran</h6>
+                        <h2 class="fw-bold mb-0"><?= formatRupiah($totalPengeluaran) ?></h2>
+                        <div class="small text-white-50 mt-2">
                             <?php if ($startDate || $endDate): ?>
-                                <p class="text-muted">
-                                    Periode: 
-                                    <?= $startDate ? date('d M Y', strtotime($startDate)) : 'Awal' ?> 
-                                    - 
-                                    <?= $endDate ? date('d M Y', strtotime($endDate)) : 'Sekarang' ?>
-                                </p>
+                                <i class="fas fa-calendar-alt me-1"></i>
+                                <?= $startDate ? date('d M Y', strtotime($startDate)) : 'Awal' ?> 
+                                s/d 
+                                <?= $endDate ? date('d M Y', strtotime($endDate)) : 'Sekarang' ?>
+                            <?php else: ?>
+                                <i class="fas fa-globe me-1"></i> Semua Periode
                             <?php endif; ?>
                         </div>
-                        <div class="col-md-4 text-end">
-                            <h3 class="text-success"><?= formatRupiah($totalPengeluaran) ?></h3>
-                        </div>
                     </div>
                 </div>
             </div>
-            
-            <!-- Filters and Search -->
-            <div class="card mb-4">
-                <div class="card-body">
-                    <form method="GET" action="pengeluaran.php" class="row g-3">
-                        <div class="col-md-3">
-                            <label for="start_date" class="form-label">Tanggal Mulai</label>
-                            <input type="date" name="start_date" id="start_date" class="form-control" value="<?= $startDate ?>">
-                        </div>
-                        <div class="col-md-3">
-                            <label for="end_date" class="form-label">Tanggal Akhir</label>
-                            <input type="date" name="end_date" id="end_date" class="form-control" value="<?= $endDate ?>">
-                        </div>
-                        <div class="col-md-4">
-                            <label for="search" class="form-label">Pencarian</label>
-                            <input type="text" name="search" id="search" class="form-control" placeholder="Cari berdasarkan keterangan" value="<?= htmlspecialchars($search) ?>">
-                        </div>
-                        <div class="col-md-2 d-flex align-items-end">
-                            <button type="submit" class="btn btn-primary w-100">Filter</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-            
-            <!-- Pengeluaran Table -->
-            <div class="card">
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-striped table-hover">
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Tanggal</th>
-                                    <th>Jumlah</th>
-                                    <th>Keterangan</th>
-                                    <th>Bukti</th>
-                                    <th>Ditambahkan</th>
-                                    <th>Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php if (count($pengeluaran) > 0): ?>
-                                    <?php foreach ($pengeluaran as $p): ?>
-                                        <tr>
-                                            <td><?= $p['id'] ?></td>
-                                            <td><?= date('d M Y', strtotime($p['tanggal'])) ?></td>
-                                            <td><?= formatRupiah($p['jumlah']) ?></td>
-                                            <td><?= htmlspecialchars($p['keterangan']) ?></td>
-                                            <td>
-                                                <?php if (!empty($p['bukti'])): ?>
-                                                    <a href="../img/bukti_pengeluaran/<?= $p['bukti'] ?>" target="_blank">
-                                                        <img src="../img/bukti_pengeluaran/<?= $p['bukti'] ?>" alt="Bukti Pengeluaran" class="img-thumbnail">
-                                                    </a>
-                                                <?php else: ?>
-                                                    <span class="text-muted">Tidak ada bukti</span>
-                                                <?php endif; ?>
-                                            </td>
-                                            <td><?= date('d M Y H:i', strtotime($p['created_at'])) ?></td>
-                                            <td>
-                                                <div class="btn-group">
-                                                    <button type="button" class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#editModal<?= $p['id'] ?>">
-                                                        <i class="fas fa-edit"></i>
-                                                    </button>
-                                                    <a href="pengeluaran.php?action=delete&id=<?= $p['id'] ?><?= isset($_GET['page']) ? '&page=' . $_GET['page'] : '' ?>" class="btn btn-sm btn-danger" onclick="return confirm('Apakah Anda yakin ingin menghapus data pengeluaran ini?')">
-                                                        <i class="fas fa-trash"></i>
-                                                    </a>
-                                                </div>
-                                                
-                                                <!-- Edit Modal -->
-                                                <div class="modal fade" id="editModal<?= $p['id'] ?>" tabindex="-1" aria-labelledby="editModalLabel<?= $p['id'] ?>" aria-hidden="true">
-                                                    <div class="modal-dialog">
-                                                        <div class="modal-content">
-                                                            <div class="modal-header">
-                                                                <h5 class="modal-title" id="editModalLabel<?= $p['id'] ?>">Edit Pengeluaran</h5>
-                                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                                            </div>
-                                                            <form method="POST" action="pengeluaran.php<?= isset($_GET['page']) ? '?page=' . $_GET['page'] : '' ?>" enctype="multipart/form-data">
-                                                                <div class="modal-body">
-                                                                    <input type="hidden" name="id" value="<?= $p['id'] ?>">
-                                                                    <div class="mb-3">
-                                                                        <label for="tanggal<?= $p['id'] ?>" class="form-label">Tanggal</label>
-                                                                        <input type="date" name="tanggal" id="tanggal<?= $p['id'] ?>" class="form-control" value="<?= $p['tanggal'] ?>" required>
-                                                                    </div>
-                                                                    <div class="mb-3">
-                                                                        <label for="jumlah<?= $p['id'] ?>" class="form-label">Jumlah (Rp)</label>
-                                                                        <input type="text" name="jumlah" id="jumlah<?= $p['id'] ?>" class="form-control money-format" value="<?= number_format($p['jumlah'], 0, ',', '.') ?>" required>
-                                                                    </div>
-                                                                    <div class="mb-3">
-                                                                        <label for="keterangan<?= $p['id'] ?>" class="form-label">Keterangan</label>
-                                                                        <textarea name="keterangan" id="keterangan<?= $p['id'] ?>" class="form-control" rows="3" required><?= htmlspecialchars($p['keterangan']) ?></textarea>
-                                                                    </div>
-                                                                    <div class="mb-3">
-                                                                        <label for="bukti<?= $p['id'] ?>" class="form-label">Bukti Pengeluaran</label>
-                                                                        <?php if (!empty($p['bukti'])): ?>
-                                                                            <div class="mb-2">
-                                                                                <img src="../img/bukti_pengeluaran/<?= $p['bukti'] ?>" alt="Bukti Pengeluaran" class="img-fluid mb-2" style="max-height: 200px;">
-                                                                                <div class="form-text">Upload file baru untuk mengganti bukti ini.</div>
-                                                                            </div>
-                                                                        <?php endif; ?>
-                                                                        <input type="file" name="bukti" id="bukti<?= $p['id'] ?>" class="form-control" accept="image/jpeg,image/png,application/pdf">
-                                                                    </div>
-                                                                </div>
-                                                                <div class="modal-footer">
-                                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                                                                    <button type="submit" name="edit_pengeluaran" class="btn btn-primary">Simpan Perubahan</button>
-                                                                </div>
-                                                            </form>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                <?php else: ?>
-                                    <tr>
-                                        <td colspan="7" class="text-center">Tidak ada data pengeluaran</td>
-                                    </tr>
-                                <?php endif; ?>
-                            </tbody>
-                        </table>
+
+            <!-- Filter Card -->
+            <div class="col-md-8">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <h6 class="card-title text-muted mb-3"><i class="fas fa-search me-2"></i>Filter & Pencarian</h6>
+                        <form method="GET" action="pengeluaran.php" class="row g-2">
+                            <div class="col-md-4">
+                                <label class="small text-muted mb-1">Dari Tanggal</label>
+                                <input type="date" name="start_date" class="form-control form-control-sm" value="<?= $startDate ?>">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="small text-muted mb-1">Sampai Tanggal</label>
+                                <input type="date" name="end_date" class="form-control form-control-sm" value="<?= $endDate ?>">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="small text-muted mb-1">Cari Keterangan</label>
+                                <div class="input-group input-group-sm">
+                                    <input type="text" name="search" class="form-control" placeholder="Biaya konsumsi..." value="<?= htmlspecialchars($search) ?>">
+                                    <button class="btn btn-primary" type="submit">Cari</button>
+                                </div>
+                            </div>
+                        </form>
                     </div>
-                    
-                    <!-- Pagination -->
-                    <?php if ($totalPages > 1): ?>
-                        <div class="d-flex justify-content-center mt-4">
-                            <nav aria-label="Page navigation">
-                                <ul class="pagination">
-                                    <?php if ($page > 1): ?>
-                                        <li class="page-item">
-                                            <a class="page-link" href="?page=<?= $page - 1 ?><?= $startDate ? '&start_date=' . $startDate : '' ?><?= $endDate ? '&end_date=' . $endDate : '' ?><?= $search ? '&search=' . urlencode($search) : '' ?>" aria-label="Previous">
-                                                <span aria-hidden="true">&laquo;</span>
-                                            </a>
-                                        </li>
-                                    <?php endif; ?>
-                                    
-                                    <?php for ($i = 1; $i <= $totalPages; $i++): ?>
-                                        <li class="page-item <?= $i === $page ? 'active' : '' ?>">
-                                            <a class="page-link" href="?page=<?= $i ?><?= $startDate ? '&start_date=' . $startDate : '' ?><?= $endDate ? '&end_date=' . $endDate : '' ?><?= $search ? '&search=' . urlencode($search) : '' ?>">
-                                                <?= $i ?>
-                                            </a>
-                                        </li>
-                                    <?php endfor; ?>
-                                    
-                                    <?php if ($page < $totalPages): ?>
-                                        <li class="page-item">
-                                            <a class="page-link" href="?page=<?= $page + 1 ?><?= $startDate ? '&start_date=' . $startDate : '' ?><?= $endDate ? '&end_date=' . $endDate : '' ?><?= $search ? '&search=' . urlencode($search) : '' ?>" aria-label="Next">
-                                                <span aria-hidden="true">&raquo;</span>
-                                            </a>
-                                        </li>
-                                    <?php endif; ?>
-                                </ul>
-                            </nav>
-                        </div>
-                    <?php endif; ?>
                 </div>
             </div>
         </div>
-
+        
+        <!-- Pengeluaran Table -->
+        <div class="card table-card">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="ps-4" width="5%">#ID</th>
+                                <th width="15%">Tanggal</th>
+                                <th width="20%">Jumlah (Rp)</th>
+                                <th>Keterangan</th>
+                                <th width="10%">Bukti</th>
+                                <th width="10%" class="text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (count($pengeluaran) > 0): ?>
+                                <?php foreach ($pengeluaran as $p): ?>
+                                    <tr>
+                                        <td class="ps-4 text-muted small">#<?= $p['id'] ?></td>
+                                        <td>
+                                            <div class="fw-medium text-dark"><?= date('d M Y', strtotime($p['tanggal'])) ?></div>
+                                            <div class="small text-muted"><i class="far fa-clock me-1"></i><?= date('H:i', strtotime($p['created_at'])) ?></div>
+                                        </td>
+                                        <td>
+                                            <span class="fw-bold text-danger"><?= formatRupiah($p['jumlah']) ?></span>
+                                        </td>
+                                        <td><?= htmlspecialchars($p['keterangan']) ?></td>
+                                        <td>
+                                            <?php if (!empty($p['bukti'])): ?>
+                                                <a href="../img/bukti_pengeluaran/<?= $p['bukti'] ?>" target="_blank" class="btn btn-sm btn-outline-secondary">
+                                                    <i class="fas fa-paperclip me-1"></i>Lihat
+                                                </a>
+                                            <?php else: ?>
+                                                <span class="text-muted small">-</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td class="text-center">
+                                            <div class="btn-group">
+                                                <button type="button" class="btn btn-sm btn-light text-primary" data-bs-toggle="modal" data-bs-target="#editModal<?= $p['id'] ?>" title="Edit">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <a href="pengeluaran.php?action=delete&id=<?= $p['id'] ?><?= isset($_GET['page']) ? '&page=' . $_GET['page'] : '' ?>" class="btn btn-sm btn-light text-danger" onclick="return confirm('Hapus data pengeluaran ini?')" title="Hapus">
+                                                    <i class="fas fa-trash-alt"></i>
+                                                </a>
+                                            </div>
+                                            
+                                            <!-- Edit Modal -->
+                                            <div class="modal fade" id="editModal<?= $p['id'] ?>" tabindex="-1" aria-hidden="true">
+                                                <div class="modal-dialog">
+                                                    <div class="modal-content">
+                                                        <div class="modal-header">
+                                                            <h5 class="modal-title">Edit Pengeluaran</h5>
+                                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                        </div>
+                                                        <form method="POST" action="pengeluaran.php<?= isset($_GET['page']) ? '?page=' . $_GET['page'] : '' ?>" enctype="multipart/form-data">
+                                                            <div class="modal-body text-start">
+                                                                <input type="hidden" name="id" value="<?= $p['id'] ?>">
+                                                                <div class="mb-3">
+                                                                    <label class="form-label text-muted small">Tanggal</label>
+                                                                    <input type="date" name="tanggal" class="form-control" value="<?= $p['tanggal'] ?>" required>
+                                                                </div>
+                                                                <div class="mb-3">
+                                                                    <label class="form-label text-muted small">Jumlah (Rp)</label>
+                                                                    <div class="input-group">
+                                                                        <span class="input-group-text">Rp</span>
+                                                                        <input type="text" name="jumlah" class="form-control money-format fw-bold" value="<?= number_format($p['jumlah'], 0, ',', '.') ?>" required>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="mb-3">
+                                                                    <label class="form-label text-muted small">Keterangan</label>
+                                                                    <textarea name="keterangan" class="form-control" rows="3" required><?= htmlspecialchars($p['keterangan']) ?></textarea>
+                                                                </div>
+                                                                <div class="mb-3">
+                                                                    <label class="form-label text-muted small">Bukti (Opsional)</label>
+                                                                    <?php if (!empty($p['bukti'])): ?>
+                                                                        <div class="mb-2 p-2 bg-light border rounded">
+                                                                            <small class="text-success"><i class="fas fa-check me-1"></i>File saat ini: <?= $p['bukti'] ?></small>
+                                                                        </div>
+                                                                    <?php endif; ?>
+                                                                    <input type="file" name="bukti" class="form-control" accept="image/jpeg,image/png,application/pdf">
+                                                                </div>
+                                                            </div>
+                                                            <div class="modal-footer">
+                                                                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                                                                <button type="submit" name="edit_pengeluaran" class="btn btn-primary">Simpan Perubahan</button>
+                                                            </div>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <tr>
+                                    <td colspan="6" class="text-center py-5 text-muted">
+                                        <i class="fas fa-inbox fa-3x mb-3 text-light"></i><br>
+                                        Belum ada data pengeluaran.
+                                    </td>
+                                </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                <?php if ($totalPages > 1): ?>
+                    <div class="d-flex justify-content-end p-3 border-top">
+                        <nav aria-label="Page navigation">
+                            <ul class="pagination mb-0">
+                                <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>">
+                                    <a class="page-link" href="?page=<?= $page - 1 ?><?= $startDate ? '&start_date=' . $startDate : '' ?><?= $endDate ? '&end_date=' . $endDate : '' ?><?= $search ? '&search=' . urlencode($search) : '' ?>">
+                                        <i class="fas fa-chevron-left"></i>
+                                    </a>
+                                </li>
+                                <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+                                    <li class="page-item <?= $i === $page ? 'active' : '' ?>">
+                                        <a class="page-link" href="?page=<?= $i ?><?= $startDate ? '&start_date=' . $startDate : '' ?><?= $endDate ? '&end_date=' . $endDate : '' ?><?= $search ? '&search=' . urlencode($search) : '' ?>"><?= $i ?></a>
+                                    </li>
+                                <?php endfor; ?>
+                                <li class="page-item <?= $page >= $totalPages ? 'disabled' : '' ?>">
+                                    <a class="page-link" href="?page=<?= $page + 1 ?><?= $startDate ? '&start_date=' . $startDate : '' ?><?= $endDate ? '&end_date=' . $endDate : '' ?><?= $search ? '&search=' . urlencode($search) : '' ?>">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </a>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
     
     <!-- Add Pengeluaran Modal -->
-    <div class="modal fade" id="addModal" tabindex="-1" aria-labelledby="addModalLabel" aria-hidden="true">
+    <div class="modal fade" id="addModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="addModalLabel">Tambah Pengeluaran</h5>
+                    <h5 class="modal-title">Tambah Pengeluaran Baru</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <form method="POST" action="pengeluaran.php<?= isset($_GET['page']) ? '?page=' . $_GET['page'] : '' ?>" enctype="multipart/form-data">
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label for="tanggal" class="form-label">Tanggal</label>
-                            <input type="date" name="tanggal" id="tanggal" class="form-control" value="<?= date('Y-m-d') ?>" required>
+                            <label class="form-label text-muted small">Tanggal</label>
+                            <input type="date" name="tanggal" class="form-control" value="<?= date('Y-m-d') ?>" required>
                         </div>
                         <div class="mb-3">
-                            <label for="jumlah" class="form-label">Jumlah (Rp)</label>
-                            <input type="text" name="jumlah" id="jumlah" class="form-control money-format" placeholder="Contoh: 100.000" required>
+                            <label class="form-label text-muted small">Jumlah (Rp)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">Rp</span>
+                                <input type="text" name="jumlah" class="form-control money-format fw-bold" placeholder="0" required>
+                            </div>
                         </div>
                         <div class="mb-3">
-                            <label for="keterangan" class="form-label">Keterangan</label>
-                            <textarea name="keterangan" id="keterangan" class="form-control" rows="3" placeholder="Jelaskan penggunaan dana..." required></textarea>
+                            <label class="form-label text-muted small">Keterangan</label>
+                            <textarea name="keterangan" class="form-control" rows="3" placeholder="Untuk keperluan apa..." required></textarea>
                         </div>
                         <div class="mb-3">
-                            <label for="bukti" class="form-label">Bukti Pengeluaran</label>
-                            <input type="file" name="bukti" id="bukti" class="form-control" accept="image/jpeg,image/png,application/pdf">
-                            <div class="form-text">Upload nota/kwitansi sebagai bukti pengeluaran (opsional).</div>
+                            <label class="form-label text-muted small">Bukti (Opsional)</label>
+                            <input type="file" name="bukti" class="form-control" accept="image/jpeg,image/png,application/pdf">
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                        <button type="submit" name="add_pengeluaran" class="btn btn-primary">Simpan</button>
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" name="add_pengeluaran" class="btn btn-primary">Simpan Data</button>
                     </div>
                 </form>
             </div>
@@ -503,7 +571,6 @@ function formatRupiah($nominal) {
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Auto-close alerts after 5 seconds
         document.addEventListener('DOMContentLoaded', function() {
             // Alert auto-close
             let alerts = document.querySelectorAll('.alert');
@@ -511,28 +578,20 @@ function formatRupiah($nominal) {
                 setTimeout(function() {
                     let bsAlert = new bootstrap.Alert(alert);
                     bsAlert.close();
-                }, 5000);
+                }, 4000);
             });
             
             // Format currency input
             const formatMoney = function(input) {
-                // Remove non-digit characters
                 let value = input.value.replace(/\D/g, '');
-                
-                // Format with thousand separator
                 if (value) {
                     value = parseInt(value).toLocaleString('id-ID');
                 }
-                
                 input.value = value;
             };
             
-            // Apply currency format to all money format inputs
             document.querySelectorAll('.money-format').forEach(function(input) {
-                // Format initial value
                 formatMoney(input);
-                
-                // Format on input
                 input.addEventListener('input', function() {
                     formatMoney(this);
                 });

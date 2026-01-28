@@ -1,9 +1,11 @@
 <?php
+session_start();
 require_once 'koneksi.php';
 require_once 'hit_counter.php';
 
 // Check Quota
 $currentYear = date('Y');
+$hijriYear = $currentYear - 579;
 $stmtQ = $conn->prepare("SELECT setting_value FROM settings WHERE setting_key = 'safari_quota'");
 $stmtQ->execute();
 $quotaSafari = (int)$stmtQ->fetchColumn();
@@ -14,6 +16,23 @@ $stmtC->execute(['tahun' => $currentYear]);
 $currentCount = (int)$stmtC->fetchColumn();
 
 $quotaFull = $currentCount >= $quotaSafari;
+
+// Check Form Status
+$stmtS = $conn->prepare("SELECT setting_value FROM settings WHERE setting_key = 'safari_form_status'");
+$stmtS->execute();
+$formStatus = $stmtS->fetchColumn() ?: 'open';
+
+// Admin Exception
+if (isset($_SESSION['authenticated']) && $_SESSION['authenticated'] === true) {
+    if ($formStatus === 'closed') {
+        echo '<div style="background: #ffc107; color: #000; padding: 10px; text-align: center; font-weight: bold;">MODE ADMIN: Form terlihat karena Anda login sebagai Admin (Status Asli: Closed)</div>';
+        $formStatus = 'open';
+    }
+}
+
+$stmtM = $conn->prepare("SELECT setting_value FROM settings WHERE setting_key = 'safari_form_message'");
+$stmtM->execute();
+$formMessage = $stmtM->fetchColumn() ?: 'Mohon maaf, pendaftaran Safari Ramadhan saat ini sedang ditutup.';
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -23,10 +42,10 @@ $quotaFull = $currentCount >= $quotaSafari;
     <title>Form Safari Ramadhan</title>
     <link rel="stylesheet" href="assets/css/style.css">
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <style>
         /* Override global styles for form specific needs */
+
         body {
             background-color: #f4f4f4; /* Match form page background style if needed */
         }
@@ -193,16 +212,28 @@ $quotaFull = $currentCount >= $quotaSafari;
     <?php include 'navbar.php'; ?>
 
     <div class="form-container">
-        <h2 class="form-title">FORM PENGAJUAN SAFARI RAMADHAN 1446 H/2025</h2>
-        <div class="form-notice">
-            Mohon maaf untuk sementara program ini dikhususkan untuk lembaga yang berlokasi di kota Klaten 🙏🏼
-        </div>
+        <h2 class="form-title">FORM PENGAJUAN SAFARI RAMADHAN <?= $hijriYear ?> H/<?= $currentYear ?></h2>
 
-        <div class="progress-bar">
-            <div class="progress"></div>
-        </div>
+        <?php if ($formStatus === 'closed'): ?>
+            <div class="alert alert-warning text-center" style="background-color: #fff3cd; color: #856404; padding: 2rem; border-radius: 10px; border: 1px solid #ffeeba;">
+                <i class='bx bx-info-circle' style="font-size: 3rem; margin-bottom: 1rem;"></i>
+                <h4>Pendaftaran Ditutup</h4>
+                <p><?= nl2br(htmlspecialchars($formMessage)) ?></p>
+                <div class="mt-3">
+                    <a href="index.php" class="btn btn-back" style="text-decoration: none; display: inline-block; margin-top: 10px;">Kembali ke Beranda</a>
+                </div>
+            </div>
+        <?php else: ?>
+            <div class="form-notice">
+                Mohon maaf untuk sementara program ini dikhususkan untuk lembaga yang berlokasi di kota Klaten 🙏🏼
+            </div>
 
-        <form id="safariForm">
+            <div class="progress-bar">
+                <div class="progress"></div>
+            </div>
+        <?php endif; ?>
+
+        <form id="safariForm" style="<?= $formStatus === 'closed' ? 'display: none;' : '' ?>">
             <!-- Page 1 -->
             <div class="form-page active" id="page1">
                 <!-- 1. Nama Lembaga -->
@@ -321,7 +352,7 @@ $quotaFull = $currentCount >= $quotaSafari;
 
                 <!-- 6. Pekan/Minggu Ke Berapa (Mapped to 'manfaat' DB column) -->
                 <div class="form-group">
-                    <label class="required">6. Pekan/Minggu Ke Berapa</label>
+                    <label class="required">6. Pengajuan Pelaksanaan Safari Ramadhan</label>
                     <select required name="manfaat">
                         <option value="">Pilih Pekan</option>
                         <option value="Pekan 1">Pekan 1</option>
@@ -426,25 +457,9 @@ $quotaFull = $currentCount >= $quotaSafari;
                     </div>
                 </div>
 
-                <!-- 13. Ketentuan & Persetujuan -->
+                <!-- 13. Amplop Infaq (Ex-14) -->
                 <div class="form-group">
-                    <label class="required">13. Ketentuan & Persetujuan</label>
-                    <div class="notice-box">
-                        <p><strong>PROGRAM SAFARI RAMADHAN INI GRATIS.</strong> Mohon PJ Lembaga menginformasikan kepada santri agar membawa Infaq Terbaiknya saja untuk mendukung program-program yayasan Guru Ngaji Berdaya secara keseluruhan.</p>
-                    </div>
-                    <div class="radio-group">
-                        <div class="radio-item">
-                            <input type="radio" name="persetujuan" value="setuju" required> Setuju
-                        </div>
-                        <div class="radio-item">
-                            <input type="radio" name="persetujuan" value="belum"> Belum Setuju
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 14. Amplop Infaq (Mapped to 'kesediaan_infaq') -->
-                <div class="form-group">
-                    <label class="required">14. Apakah Bersedia dititipi amplop infaq untuk tiap wali santri?</label>
+                    <label class="required">13. Apakah Bersedia dititipi amplop infaq untuk tiap wali santri?</label>
                     <div class="radio-group">
                         <div class="radio-item">
                             <input type="radio" name="kesediaan_infaq" value="ya" required> Bersedia
@@ -455,37 +470,88 @@ $quotaFull = $currentCount >= $quotaSafari;
                     </div>
                 </div>
 
-                <!-- 15. Share Lokasi -->
+                <!-- 14. Share Lokasi (Ex-15) -->
                 <div class="form-group">
-                    <label class="required">15. Share Lokasi (Google Maps)</label>
-                    <div style="display: flex; gap: 10px;">
-                        <input type="text" required name="share_loc" id="shareLocInput" placeholder="https://maps.google.com/..." style="flex: 1;">
-                        <button type="button" class="btn btn-sm" id="openMapBtn" style="background: #20B2AA; color: white; white-space: nowrap;">
-                            <i class='bx bx-map'></i> Pilih di Peta
-                        </button>
+                    <label class="required">14. Share Lokasi (Google Maps)</label>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <input type="text" required name="share_loc" id="shareLocInput" placeholder="https://maps.google.com/..." style="flex: 1; min-width: 200px;">
                     </div>
-                    <small style="color: #666; font-size: 12px; display: block; margin-top: 5px;">*Klik tombol 'Pilih di Peta' atau tempel link Google Maps secara manual</small>
+                    <div style="margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button type="button" class="btn btn-sm" id="btnGetLoc" style="background: #20B2AA; color: white; display: flex; align-items: center; gap: 5px;">
+                            <i class='bx bx-crosshair'></i> Ambil Lokasi Terkini (GPS)
+                        </button>
+                        <a href="https://www.google.com/maps" target="_blank" class="btn btn-sm btn-outline-secondary" style="display: flex; align-items: center; gap: 5px; text-decoration: none;">
+                            <i class='bx bx-map-alt'></i> Buka Google Maps Manual
+                        </a>
+                    </div>
+                    <small style="color: #666; font-size: 12px; display: block; margin-top: 5px;">
+                        *Klik <strong>"Ambil Lokasi Terkini"</strong> untuk mengisi otomatis sesuai posisi Anda saat ini.<br>
+                        *Atau klik "Buka Google Maps Manual" untuk mencari lokasi, lalu salin link-nya ke sini.
+                    </small>
                 </div>
 
-                <!-- Map Modal -->
-                <div id="mapModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center;">
-                    <div style="background: white; width: 90%; max-width: 600px; border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; max-height: 90vh;">
-                        <div style="padding: 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
-                            <h5 style="margin: 0;">Pilih Lokasi Lembaga</h5>
-                            <button type="button" id="closeMapBtn" style="border: none; background: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
+                <!-- 15. Duta GNB -->
+                <div class="form-group">
+                    <label class="required">15. Apakah Anda Bersedia Menjadi Duta GNB?</label>
+                    <div class="radio-group">
+                        <div class="radio-item">
+                            <input type="radio" name="duta_gnb" value="opsional" checked> Opsional (berarti kosong)
                         </div>
-                        <div style="position: relative; flex: 1; min-height: 400px; height: 400px;">
-                            <div id="map" style="width: 100%; height: 100%;"></div>
-                            <!-- Search / GPS Controls -->
-                            <div style="position: absolute; top: 10px; left: 50px; right: 10px; z-index: 1000; display: flex; gap: 5px;">
-                                <button type="button" id="locateUserBtn" style="background: white; border: 2px solid rgba(0,0,0,0.2); border-radius: 4px; padding: 5px 10px; cursor: pointer;">
-                                    <i class='bx bx-crosshair'></i> Lokasi Saya
-                                </button>
+                        <div class="radio-item">
+                            <input type="radio" name="duta_gnb" value="bersedia"> Bersedia
+                        </div>
+                        <div class="radio-item">
+                            <input type="radio" name="duta_gnb" value="tidak_bersedia"> Tidak Bersedia
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 16. Ketentuan & Persetujuan (Ex-15) -->
+                <div class="form-group">
+                    <label class="required">16. Ketentuan & Persetujuan</label>
+                    <div class="notice-box">
+                        <p><strong>PROGRAM SAFARI RAMADHAN INI GRATIS.</strong> Mohon PJ Lembaga menginformasikan kepada santri agar membawa Infaq Terbaiknya saja untuk mendukung program-program yayasan Guru Ngaji Berdaya secara keseluruhan.</p>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <button type="button" class="btn btn-info btn-sm text-white" style="background-color: #17a2b8;" id="btnReadMou" onclick="openMouModal()">
+                            <i class='bx bx-book-open'></i> Baca Selengkapnya Isi MOU
+                        </button>
+                    </div>
+
+                    <div style="margin-top: 15px; padding: 10px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 5px;">
+                        <label style="display: flex; gap: 10px; cursor: pointer; align-items: center;">
+                            <input type="checkbox" id="agreeCheckbox" required style="width: 20px; height: 20px;" disabled>
+                            <span>Kami telah membaca dan menyetujui Ketentuan Pelaksanaan Safari Ramadhan 1447 H</span>
+                        </label>
+                        <small id="agreeWarning" style="color: red; display: block; margin-top: 5px;">*Anda harus membaca dan mengunduh MOU terlebih dahulu sebelum bisa menyetujui.</small>
+                    </div>
+                    <input type="hidden" name="persetujuan" value="setuju">
+                </div>
+
+                <!-- MOU Modal -->
+                <div id="mouModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; align-items: center; justify-content: center;">
+                    <div style="background: white; width: 90%; max-width: 800px; border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; max-height: 90vh;">
+                        <div style="padding: 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; background: #20B2AA; color: white;">
+                            <h5 style="margin: 0;">PERJANJIAN KERJASAMA (MOU)</h5>
+                            <button type="button" onclick="document.getElementById('mouModal').style.display='none'" style="border: none; background: none; color: white; font-size: 1.5rem; cursor: pointer;">&times;</button>
+                        </div>
+                        <div style="padding: 20px; overflow-y: auto; text-align: left; line-height: 1.6;">
+                            <div style="text-align: center;">
+                                <img src="assets/img/mou_page_1.jpg?v=<?= time() ?>" alt="MOU Halaman 1" style="width: 100%; height: auto; margin-bottom: 20px; border: 1px solid #ddd;">
+                                <img src="assets/img/mou_page_2.jpg?v=<?= time() ?>" alt="MOU Halaman 2" style="width: 100%; height: auto; border: 1px solid #ddd;">
+                            </div>
+
+                            <hr>
+                            <div style="text-align: center; margin-top: 20px;">
+                                <a href="assets/docs/mou_safari.pdf" target="_blank" class="btn" id="btnDownloadMou" style="background: #20B2AA; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;" onclick="markMouDownloaded()">
+                                    <i class='bx bx-download'></i> Download File PDF MOU
+                                </a>
                             </div>
                         </div>
                         <div style="padding: 15px; border-top: 1px solid #eee; text-align: right;">
-                            <button type="button" id="confirmLocationBtn" class="btn btn-submit" style="width: auto;">
-                                Pilih Lokasi Ini
+                            <button type="button" onclick="document.getElementById('mouModal').style.display='none'" class="btn" style="background: #6c757d; color: white; padding: 8px 20px; border: none; border-radius: 4px; cursor: pointer;">
+                                Tutup
                             </button>
                         </div>
                     </div>
@@ -632,107 +698,109 @@ $quotaFull = $currentCount >= $quotaSafari;
             });
         </script>
     <?php endif; ?>
-    </script>
     <script>
-        // Map Implementation
+        // GPS / Geolocation Handling
         document.addEventListener('DOMContentLoaded', function() {
-            const mapModal = document.getElementById('mapModal');
-            const openMapBtn = document.getElementById('openMapBtn');
-            const closeMapBtn = document.getElementById('closeMapBtn');
-            const confirmLocationBtn = document.getElementById('confirmLocationBtn');
-            const locateUserBtn = document.getElementById('locateUserBtn');
+            const btnGetLoc = document.getElementById('btnGetLoc');
             const shareLocInput = document.getElementById('shareLocInput');
-            
-            let map = null;
-            let marker = null;
-            let currentLat = -7.702; // Default Klaten
-            let currentLng = 110.603;
 
-            function initMap() {
-                if (map !== null) return; // Already initialized
+            if(btnGetLoc) {
+                btnGetLoc.addEventListener('click', function() {
+                    if (!navigator.geolocation) {
+                        Swal.fire('Error', 'Browser Anda tidak mendukung Geolocation.', 'error');
+                        return;
+                    }
+                    
+                    // Show loading
+                    const originalText = btnGetLoc.innerHTML;
+                    btnGetLoc.innerHTML = "<i class='bx bx-loader-alt bx-spin'></i> Mencari Lokasi...";
+                    btnGetLoc.disabled = true;
 
-                map = L.map('map').setView([currentLat, currentLng], 13);
-                
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '© OpenStreetMap contributors'
-                }).addTo(map);
+                    navigator.geolocation.getCurrentPosition(function(position) {
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        
+                        // Use higher precision format
+                        const googleMapsLink = `https://www.google.com/maps?q=${lat},${lng}`;
+                        
+                        shareLocInput.value = googleMapsLink;
+                        
+                        btnGetLoc.innerHTML = "<i class='bx bx-check'></i> Lokasi Ditemukan!";
+                        btnGetLoc.classList.remove('btn-submit'); // if any
+                        btnGetLoc.style.background = '#28a745';
+                        
+                        setTimeout(() => {
+                            btnGetLoc.innerHTML = originalText;
+                            btnGetLoc.disabled = false;
+                            btnGetLoc.style.background = '#20B2AA';
+                        }, 2000);
 
-                marker = L.marker([currentLat, currentLng], {
-                    draggable: true
-                }).addTo(map);
-
-                // Update marker position on click
-                map.on('click', function(e) {
-                    marker.setLatLng(e.latlng);
-                    currentLat = e.latlng.lat;
-                    currentLng = e.latlng.lng;
-                });
-
-                // Update coordinates when dragging ends
-                marker.on('dragend', function(e) {
-                    const position = marker.getLatLng();
-                    currentLat = position.lat;
-                    currentLng = position.lng;
+                    }, function(error) {
+                        console.error(error);
+                        let msg = "Gagal mengambil lokasi.";
+                        if(error.code == 1) msg = "Izin lokasi ditolak. Mohon izinkan akses lokasi di browser Anda.";
+                        else if(error.code == 2) msg = "Lokasi tidak tersedia. Pastikan GPS aktif.";
+                        else if(error.code == 3) msg = "Waktu permintaan habis.";
+                        
+                        Swal.fire('Gagal', msg, 'error');
+                        btnGetLoc.innerHTML = originalText;
+                        btnGetLoc.disabled = false;
+                    }, {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0
+                    });
                 });
             }
+        });
+        // MOU Logic
+        let mouRead = false;
+        let mouDownloaded = false;
 
-            openMapBtn.addEventListener('click', function() {
-                mapModal.style.display = 'flex';
-                // Need to invalidate size after modal opens for map to render correctly
-                setTimeout(() => {
-                    initMap();
-                    map.invalidateSize();
-                    if (marker) {
-                        map.panTo(marker.getLatLng());
-                    }
-                }, 300);
-            });
+        function openMouModal() {
+            document.getElementById('mouModal').style.display = 'flex';
+            mouRead = true;
+            checkMouStatus();
+        }
 
-            closeMapBtn.addEventListener('click', function() {
-                mapModal.style.display = 'none';
-            });
+        function markMouDownloaded() {
+            mouDownloaded = true;
+            checkMouStatus();
+        }
+
+        function checkMouStatus() {
+            const agreeCheckbox = document.getElementById('agreeCheckbox');
+            const agreeWarning = document.getElementById('agreeWarning');
             
-            // Close modal when clicking outside
-            mapModal.addEventListener('click', function(e) {
-                if (e.target === mapModal) {
-                    mapModal.style.display = 'none';
-                }
-            });
+            if (mouRead && mouDownloaded) {
+                agreeCheckbox.disabled = false;
+                if(agreeWarning) agreeWarning.style.display = 'none';
+            }
+        }
 
-            locateUserBtn.addEventListener('click', function() {
-                if (!navigator.geolocation) {
-                    alert("Browser Anda tidak mendukung Geolocation");
-                    return;
-                }
-                
-                locateUserBtn.innerHTML = "<i class='bx bx-loader-alt bx-spin'></i> Mencari...";
-                
-                navigator.geolocation.getCurrentPosition(function(position) {
-                    currentLat = position.coords.latitude;
-                    currentLng = position.coords.longitude;
-                    
-                    map.setView([currentLat, currentLng], 16);
-                    marker.setLatLng([currentLat, currentLng]);
-                    
-                    locateUserBtn.innerHTML = "<i class='bx bx-crosshair'></i> Lokasi Saya";
-                }, function(error) {
-                    alert("Gagal mendapatkan lokasi: " + error.message);
-                    locateUserBtn.innerHTML = "<i class='bx bx-crosshair'></i> Lokasi Saya";
+        document.addEventListener('DOMContentLoaded', function() {
+            const agreeCheckbox = document.getElementById('agreeCheckbox');
+            const submitBtn = document.querySelector('button[type="submit"]');
+
+            if(agreeCheckbox && submitBtn) {
+                // Initial state
+                submitBtn.disabled = true; // Always disabled initially
+                submitBtn.style.opacity = '0.5';
+                submitBtn.style.cursor = 'not-allowed';
+
+                agreeCheckbox.addEventListener('change', function() {
+                    // Submit button only enabled if checkbox is checked AND MOU conditions met (which is implied because checkbox is disabled otherwise)
+                    if (this.checked) {
+                        submitBtn.disabled = false;
+                        submitBtn.style.opacity = '1';
+                        submitBtn.style.cursor = 'pointer';
+                    } else {
+                        submitBtn.disabled = true;
+                        submitBtn.style.opacity = '0.5';
+                        submitBtn.style.cursor = 'not-allowed';
+                    }
                 });
-            });
-
-            confirmLocationBtn.addEventListener('click', function() {
-                // Generate Google Maps Link
-                // Format: https://www.google.com/maps?q=lat,lng
-                // Using 6 decimal places for precision
-                const lat = parseFloat(currentLat).toFixed(6);
-                const lng = parseFloat(currentLng).toFixed(6);
-                
-                const googleMapsLink = `https://www.google.com/maps?q=${lat},${lng}`;
-                
-                shareLocInput.value = googleMapsLink;
-                mapModal.style.display = 'none';
-            });
+            }
         });
     </script>
 </body>

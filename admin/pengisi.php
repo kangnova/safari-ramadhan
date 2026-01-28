@@ -420,6 +420,7 @@ try {
                                         </td>
                                         <td>
                                              <button class="btn btn-sm btn-primary" 
+                                                    title="Edit Pengisi"
             onclick="editPengisi(<?= $pengisi['id'] ?>, 
                                 '<?= htmlspecialchars($pengisi['nama']) ?>', 
                                 '<?= htmlspecialchars($pengisi['no_hp']) ?>', 
@@ -427,11 +428,11 @@ try {
         <i class='bx bx-edit'></i>
     </button>
                                             <button class="btn btn-sm btn-warning" 
-                                                    onclick="editStatus(<?= $pengisi['id'] ?>, '<?= $pengisi['status'] ?>')">
+                                                    onclick="editStatus(<?= $pengisi['id'] ?>, '<?= $pengisi['status'] ?>')" title="Update Status">
                                                 <i class='bx bx-refresh'></i>
                                             </button>
                                             <button class="btn btn-sm btn-danger" 
-                                                    onclick="confirmDelete(<?= $pengisi['id'] ?>)">
+                                                    onclick="confirmDelete(<?= $pengisi['id'] ?>)" title="Hapus Pengisi">
                                                 <i class='bx bx-trash'></i>
                                             </button>
                                         </td>

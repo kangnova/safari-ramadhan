@@ -19,6 +19,7 @@ try {
               l.penanggung_jawab, l.no_wa
               FROM jadwal_safari js
               JOIN lembaga l ON js.lembaga_id = l.id 
+              WHERE YEAR(js.tanggal) = YEAR(NOW())
               ORDER BY js.tanggal ASC, js.jam ASC";
     $stmt = $conn->prepare($query);
     $stmt->execute();

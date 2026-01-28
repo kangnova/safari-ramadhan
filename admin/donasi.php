@@ -87,218 +87,290 @@ function formatBulan($bulan) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Donasi</title>
+    <title>Dashboard Keuangan - Admin</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        .sidebar {
-            height: 100vh;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 250px;
-            padding: 20px 0;
-            background-color: #343a40;
-            color: white;
-        }
-        
-        .sidebar .nav-link {
-            color: rgba(255, 255, 255, 0.8);
-            padding: 10px 20px;
-        }
-        
-        .sidebar .nav-link:hover {
-            color: white;
-            background-color: rgba(255, 255, 255, 0.1);
-        }
-        
-        .sidebar .nav-link.active {
-            color: white;
-            background-color: rgba(255, 255, 255, 0.2);
-        }
-        
-        .sidebar .nav-link i {
-            margin-right: 10px;
-        }
-        
-        .main-content {
-            margin-left: 250px;
+        .page-header {
+            background-color: white;
             padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
-        
-        .dashboard-stats .card {
+
+        .stat-card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+            position: relative;
+            height: 100%;
             transition: transform 0.3s;
         }
-        
-        .dashboard-stats .card:hover {
+
+        .stat-card:hover {
             transform: translateY(-5px);
         }
-        
-        .card-saldo {
-            border-left: 4px solid #28a745;
+
+        .stat-card .card-body {
+            position: relative;
+            z-index: 1;
+            padding: 1.5rem;
+        }
+
+        .stat-card .icon-bg {
+            position: absolute;
+            right: -10px;
+            bottom: -10px;
+            font-size: 5rem;
+            opacity: 0.15;
+            z-index: 0;
+            color: white;
+        }
+
+        .bg-gradient-primary { background: linear-gradient(45deg, #4e73df, #224abe); color: white; }
+        .bg-gradient-success { background: linear-gradient(45deg, #1cc88a, #13855c); color: white; }
+        .bg-gradient-danger { background: linear-gradient(45deg, #e74a3b, #be2617); color: white; }
+        .bg-gradient-info { background: linear-gradient(45deg, #36b9cc, #258391); color: white; }
+
+        .chart-card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            height: 100%;
+        }
+
+        .recent-card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
         }
         
-        .list-group-item {
-            border-left: 0;
-            border-right: 0;
+        .table-recent tr td {
+            vertical-align: middle;
+            padding: 0.75rem 1rem;
         }
         
-        @media (max-width: 768px) {
-            .sidebar {
-                width: 100%;
-                height: auto;
-                position: relative;
-            }
-            
-            .main-content {
-                margin-left: 0;
-            }
+        .status-badge {
+            font-size: 0.75rem;
+            padding: 0.35em 0.65em;
+            border-radius: 50rem;
         }
     </style>
 </head>
-<body>
+<body class="bg-light">
     <?php require_once 'includes/header.php'; ?>
 
     <!-- Main Content -->
     <div class="container my-4">
-            <h2 class="mb-4">Dashboard</h2>
+        
+        <!-- Page Header -->
+        <div class="page-header">
+            <div>
+                <h3 class="mb-0 fw-bold text-primary">Dashboard Keuangan</h3>
+                <p class="text-muted mb-0 mt-1">Ringkasan donasi dan pengeluaran operasional.</p>
+            </div>
+            <div>
+                <a href="laporan.php" class="btn btn-outline-primary me-2"><i class="fas fa-file-alt me-2"></i>Laporan Lengkap</a>
+                <button onclick="window.print()" class="btn btn-secondary"><i class="fas fa-print"></i></button>
+            </div>
+        </div>
             
-            <!-- Stats -->
-            <div class="row dashboard-stats mb-4">
-                <div class="col-md-3">
-                    <div class="card text-bg-primary h-100">
-                        <div class="card-body">
-                            <h5 class="card-title">Total Donasi</h5>
-                            <p class="card-text fs-4"><?= $donasiStats['total_donasi'] ?? 0 ?> Donatur</p>
-                            <p class="card-text"><?= formatRupiah($donasiStats['total_nominal'] ?? 0) ?></p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card text-bg-success h-100">
-                        <div class="card-body">
-                            <h5 class="card-title">Donasi Sukses</h5>
-                            <p class="card-text fs-4"><?= $donasiStats['count_success'] ?? 0 ?> Donatur</p>
-                            <p class="card-text"><?= formatRupiah($donasiStats['total_success'] ?? 0) ?></p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card text-bg-warning h-100">
-                        <div class="card-body">
-                            <h5 class="card-title">Total Pengeluaran</h5>
-                            <p class="card-text fs-4"><?= $pengeluaranStats['total_pengeluaran'] ?? 0 ?> Transaksi</p>
-                            <p class="card-text"><?= formatRupiah($pengeluaranStats['total_jumlah'] ?? 0) ?></p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card h-100 card-saldo">
-                        <div class="card-body">
-                            <h5 class="card-title">Saldo Saat Ini</h5>
-                            <p class="card-text fs-4 <?= $saldo >= 0 ? 'text-success' : 'text-danger' ?>">
-                                <?= formatRupiah(abs($saldo)) ?>
-                            </p>
-                            <p class="card-text small text-muted">
-                                Donasi Sukses - Total Pengeluaran
-                            </p>
+        <!-- Stats Row -->
+        <div class="row g-4 mb-4">
+            <!-- Total Donasi -->
+            <div class="col-xl-3 col-md-6">
+                <div class="card stat-card bg-gradient-primary">
+                    <div class="card-body">
+                        <i class="fas fa-hand-holding-heart icon-bg"></i>
+                        <h6 class="text-white-50 text-uppercase fw-bold mb-2">Total Donasi Masuk</h6>
+                        <div class="h3 mb-0 fw-bold"><?= formatRupiah($donasiStats['total_nominal'] ?? 0) ?></div>
+                        <div class="small text-white-50 mt-2">
+                            <i class="fas fa-user me-1"></i> <?= $donasiStats['total_donasi'] ?? 0 ?> Donatur Terdaftar
                         </div>
                     </div>
                 </div>
             </div>
-            
-            <!-- Charts -->
-            <div class="row mb-4">
-                <div class="col-md-6">
-                    <div class="card h-100">
-                        <div class="card-header">
-                            <h5 class="card-title mb-0">Tren Donasi (6 Bulan Terakhir)</h5>
-                        </div>
-                        <div class="card-body">
-                            <canvas id="donasiChart" width="400" height="250"></canvas>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="card h-100">
-                        <div class="card-header">
-                            <h5 class="card-title mb-0">Tren Pengeluaran (6 Bulan Terakhir)</h5>
-                        </div>
-                        <div class="card-body">
-                            <canvas id="pengeluaranChart" width="400" height="250"></canvas>
+
+            <!-- Donasi Sukses -->
+            <div class="col-xl-3 col-md-6">
+                <div class="card stat-card bg-gradient-success">
+                    <div class="card-body">
+                        <i class="fas fa-check-circle icon-bg"></i>
+                        <h6 class="text-white-50 text-uppercase fw-bold mb-2">Donasi Terverifikasi</h6>
+                        <div class="h3 mb-0 fw-bold"><?= formatRupiah($donasiStats['total_success'] ?? 0) ?></div>
+                        <div class="small text-white-50 mt-2">
+                            <i class="fas fa-check me-1"></i> <?= $donasiStats['count_success'] ?? 0 ?> Transaksi Sukses
                         </div>
                     </div>
                 </div>
             </div>
-            
-            <!-- Recent Activity -->
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="card mb-4">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <h5 class="card-title mb-0">Donasi Terbaru</h5>
-                            <a href="donasi.php" class="btn btn-sm btn-primary">Lihat Semua</a>
+
+            <!-- Total Pengeluaran -->
+            <div class="col-xl-3 col-md-6">
+                <div class="card stat-card bg-gradient-danger">
+                    <div class="card-body">
+                        <i class="fas fa-shopping-bag icon-bg"></i>
+                        <h6 class="text-white-50 text-uppercase fw-bold mb-2">Total Pengeluaran</h6>
+                        <div class="h3 mb-0 fw-bold"><?= formatRupiah($pengeluaranStats['total_jumlah'] ?? 0) ?></div>
+                        <div class="small text-white-50 mt-2">
+                            <i class="fas fa-receipt me-1"></i> <?= $pengeluaranStats['total_pengeluaran'] ?? 0 ?> Transaksi Keluar
                         </div>
-                        <div class="card-body p-0">
-                            <ul class="list-group list-group-flush">
-                                <?php if (count($donasiTerbaru) > 0): ?>
-                                    <?php foreach ($donasiTerbaru as $donasi): ?>
-                                        <li class="list-group-item d-flex justify-content-between align-items-start">
-                                            <div>
-                                                <div class="fw-bold">
-                                                    <?= $donasi['is_anonim'] ? 'Anonim' : htmlspecialchars($donasi['nama_donatur']) ?>
-                                                    <span class="badge <?= $donasi['status'] === 'success' ? 'bg-success' : ($donasi['status'] === 'pending' ? 'bg-warning' : 'bg-danger') ?>">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Saldo -->
+            <div class="col-xl-3 col-md-6">
+                <div class="card stat-card bg-gradient-info">
+                    <div class="card-body">
+                        <i class="fas fa-wallet icon-bg"></i>
+                        <h6 class="text-white-50 text-uppercase fw-bold mb-2">Saldo Bersih</h6>
+                        <div class="h3 mb-0 fw-bold"><?= formatRupiah($saldo) ?></div>
+                        <div class="small text-white-50 mt-2">
+                            <i class="fas fa-info-circle me-1"></i> Real-time Balance
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Charts Row -->
+        <div class="row g-4 mb-4">
+            <div class="col-lg-6">
+                <div class="card chart-card">
+                    <div class="card-header bg-white py-3">
+                        <h6 class="m-0 fw-bold text-primary"><i class="fas fa-chart-line me-2"></i>Tren Donasi Sukses (6 Bulan)</h6>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="donasiChart" height="250"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="card chart-card">
+                    <div class="card-header bg-white py-3">
+                        <h6 class="m-0 fw-bold text-danger"><i class="fas fa-chart-bar me-2"></i>Tren Pengeluaran (6 Bulan)</h6>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="pengeluaranChart" height="250"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Recent Activity Row -->
+        <div class="row g-4">
+            <!-- Recent Donations -->
+            <div class="col-lg-6">
+                <div class="card recent-card h-100">
+                    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                        <h6 class="m-0 fw-bold text-primary">Donasi Terbaru</h6>
+                        <a href="managementdonasi.php" class="btn btn-sm btn-primary rounded-pill px-3">Lihat Semua</a>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover table-recent mb-0 align-middle">
+                                <thead class="bg-light">
+                                    <tr>
+                                        <th class="ps-4">Donatur</th>
+                                        <th>Tanggal</th>
+                                        <th class="text-end pe-4">Nominal</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php if (count($donasiTerbaru) > 0): ?>
+                                        <?php foreach ($donasiTerbaru as $donasi): ?>
+                                            <tr>
+                                                <td class="ps-4">
+                                                    <div class="fw-bold text-dark">
+                                                        <?= $donasi['is_anonim'] ? '<span class="fst-italic text-muted">Hamba Allah</span>' : htmlspecialchars($donasi['nama_donatur']) ?>
+                                                    </div>
+                                                    <span class="badge status-badge <?= $donasi['status'] === 'success' ? 'bg-success' : ($donasi['status'] === 'pending' ? 'bg-warning' : 'bg-danger') ?>">
                                                         <?= ucfirst($donasi['status']) ?>
                                                     </span>
-                                                </div>
-                                                <small class="text-muted">
-                                                    <?= date('d M Y H:i', strtotime($donasi['created_at'])) ?>
-                                                </small>
-                                            </div>
-                                            <span class="fw-bold"><?= formatRupiah($donasi['nominal']) ?></span>
-                                        </li>
-                                    <?php endforeach; ?>
-                                <?php else: ?>
-                                    <li class="list-group-item text-center">Belum ada data donasi</li>
-                                <?php endif; ?>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="card mb-4">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <h5 class="card-title mb-0">Pengeluaran Terbaru</h5>
-                            <a href="pengeluaran.php" class="btn btn-sm btn-primary">Lihat Semua</a>
-                        </div>
-                        <div class="card-body p-0">
-                            <ul class="list-group list-group-flush">
-                                <?php if (count($pengeluaranTerbaru) > 0): ?>
-                                    <?php foreach ($pengeluaranTerbaru as $pengeluaran): ?>
-                                        <li class="list-group-item d-flex justify-content-between align-items-start">
-                                            <div>
-                                                <div class="fw-bold"><?= htmlspecialchars(substr($pengeluaran['keterangan'], 0, 40)) ?><?= strlen($pengeluaran['keterangan']) > 40 ? '...' : '' ?></div>
-                                                <small class="text-muted">
-                                                    <?= date('d M Y', strtotime($pengeluaran['tanggal'])) ?>
-                                                </small>
-                                            </div>
-                                            <span class="fw-bold"><?= formatRupiah($pengeluaran['jumlah']) ?></span>
-                                        </li>
-                                    <?php endforeach; ?>
-                                <?php else: ?>
-                                    <li class="list-group-item text-center">Belum ada data pengeluaran</li>
-                                <?php endif; ?>
-                            </ul>
+                                                </td>
+                                                <td class="small text-muted">
+                                                    <?= date('d M Y', strtotime($donasi['created_at'])) ?><br>
+                                                    <?= date('H:i', strtotime($donasi['created_at'])) ?>
+                                                </td>
+                                                <td class="text-end pe-4 fw-bold text-success">
+                                                    + <?= formatRupiah($donasi['nominal']) ?>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    <?php else: ?>
+                                        <tr>
+                                            <td colspan="3" class="text-center py-4 text-muted">Belum ada donasi masuk.</td>
+                                        </tr>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
             </div>
+
+            <!-- Recent Expenses -->
+            <div class="col-lg-6">
+                <div class="card recent-card h-100">
+                    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                        <h6 class="m-0 fw-bold text-danger">Pengeluaran Terbaru</h6>
+                        <a href="pengeluaran.php" class="btn btn-sm btn-danger rounded-pill px-3">Lihat Semua</a>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover table-recent mb-0 align-middle">
+                                <thead class="bg-light">
+                                    <tr>
+                                        <th class="ps-4">Keterangan</th>
+                                        <th>Tanggal</th>
+                                        <th class="text-end pe-4">Nominal</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php if (count($pengeluaranTerbaru) > 0): ?>
+                                        <?php foreach ($pengeluaranTerbaru as $pengeluaran): ?>
+                                            <tr>
+                                                <td class="ps-4">
+                                                    <div class="fw-medium text-dark text-truncate" style="max-width: 200px;">
+                                                        <?= htmlspecialchars($pengeluaran['keterangan']) ?>
+                                                    </div>
+                                                </td>
+                                                <td class="small text-muted">
+                                                    <?= date('d M Y', strtotime($pengeluaran['tanggal'])) ?>
+                                                </td>
+                                                <td class="text-end pe-4 fw-bold text-danger">
+                                                    - <?= formatRupiah($pengeluaran['jumlah']) ?>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    <?php else: ?>
+                                        <tr>
+                                            <td colspan="3" class="text-center py-4 text-muted">Belum ada pengeluaran.</td>
+                                        </tr>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // Chart Defaults
+            Chart.defaults.font.family = "'Segoe UI', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif";
+            Chart.defaults.color = '#858796';
+
             // Donasi Chart
             const donasiCtx = document.getElementById('donasiChart').getContext('2d');
             const donasiData = {
@@ -337,20 +409,50 @@ function formatBulan($bulan) {
                         echo implode(',', $values);
                         ?>
                     ],
-                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                    borderColor: 'rgba(54, 162, 235, 1)',
-                    borderWidth: 1
+                    backgroundColor: 'rgba(78, 115, 223, 0.05)',
+                    borderColor: 'rgba(78, 115, 223, 1)',
+                    pointRadius: 3,
+                    pointBackgroundColor: 'rgba(78, 115, 223, 1)',
+                    pointBorderColor: 'rgba(78, 115, 223, 1)',
+                    pointHoverRadius: 3,
+                    pointHoverBackgroundColor: 'rgba(78, 115, 223, 1)',
+                    pointHoverBorderColor: 'rgba(78, 115, 223, 1)',
+                    pointHitRadius: 10,
+                    pointBorderWidth: 2,
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4
                 }]
             };
             
             const donasiChart = new Chart(donasiCtx, {
-                type: 'bar',
+                type: 'line',
                 data: donasiData,
                 options: {
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
                     scales: {
+                        x: {
+                            grid: {
+                                display: false,
+                                drawBorder: false
+                            }
+                        },
                         y: {
                             beginAtZero: true,
+                            grid: {
+                                color: "rgb(234, 236, 244)",
+                                zeroLineColor: "rgb(234, 236, 244)",
+                                drawBorder: false,
+                                borderDash: [2],
+                                zeroLineBorderDash: [2]
+                            },
                             ticks: {
+                                padding: 10,
                                 callback: function(value) {
                                     return 'Rp ' + value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
                                 }
@@ -387,9 +489,11 @@ function formatBulan($bulan) {
                         echo implode(',', $values);
                         ?>
                     ],
-                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                    borderColor: 'rgba(255, 99, 132, 1)',
-                    borderWidth: 1
+                    backgroundColor: 'rgba(231, 74, 59, 1)',
+                    hoverBackgroundColor: 'rgba(190, 38, 23, 1)',
+                    borderColor: 'rgba(231, 74, 59, 1)',
+                    borderWidth: 1,
+                    barPercentage: 0.5
                 }]
             };
             
@@ -397,10 +501,30 @@ function formatBulan($bulan) {
                 type: 'bar',
                 data: pengeluaranData,
                 options: {
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
                     scales: {
+                        x: {
+                            grid: {
+                                display: false,
+                                drawBorder: false
+                            }
+                        },
                         y: {
                             beginAtZero: true,
+                            grid: {
+                                color: "rgb(234, 236, 244)",
+                                zeroLineColor: "rgb(234, 236, 244)",
+                                drawBorder: false,
+                                borderDash: [2],
+                                zeroLineBorderDash: [2]
+                            },
                             ticks: {
+                                padding: 10,
                                 callback: function(value) {
                                     return 'Rp ' + value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
                                 }

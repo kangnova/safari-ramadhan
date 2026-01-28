@@ -13,7 +13,7 @@ $programs = [];
 
 try {
     // Query untuk mengambil data program
-    $query = "SELECT * FROM program ORDER BY tgl_update DESC";
+    $query = "SELECT * FROM program ORDER BY urutan ASC, tgl_update DESC";
     $stmt = $conn->prepare($query);
     $stmt->execute();
     $programs = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -53,6 +53,8 @@ try {
                         <thead>
                             <tr>
                                 <th>No</th>
+                                <th>Urutan</th>
+                                <th>Status</th>
                                 <th>Nama Program</th>
                                 <th>Gambar</th>
                                 <th>Deskripsi</th>
@@ -64,6 +66,14 @@ try {
                             <?php foreach ($programs as $index => $program): ?>
                             <tr>
                                 <td><?= $index + 1 ?></td>
+                                <td><?= $program['urutan'] ?></td>
+                                <td>
+                                    <?php if ($program['status'] === 'published'): ?>
+                                        <span class="badge bg-success">Published</span>
+                                    <?php else: ?>
+                                        <span class="badge bg-secondary">Draft</span>
+                                    <?php endif; ?>
+                                </td>
                                 <td><?= htmlspecialchars($program['nama_program']) ?></td>
                                 <td>
                                     <img src="../img/program/<?= $program['gambar'] ?>" 
@@ -106,6 +116,19 @@ try {
                             <label class="form-label">Nama Program</label>
                             <input type="text" class="form-control" name="nama_program" required>
                         </div>
+                         <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Urutan</label>
+                                <input type="number" class="form-control" name="urutan" value="0" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Status</label>
+                                <select class="form-control" name="status">
+                                    <option value="published">Published</option>
+                                    <option value="draft">Draft</option>
+                                </select>
+                            </div>
+                        </div>
                         <div class="mb-3">
                             <label class="form-label">Deskripsi</label>
                             <textarea class="form-control" name="deskripsi" rows="4" required></textarea>
@@ -144,6 +167,20 @@ try {
                             <label class="form-label">Nama Program</label>
                             <input type="text" class="form-control" name="nama_program" 
                                    value="<?= htmlspecialchars($program['nama_program']) ?>" required>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Urutan</label>
+                                <input type="number" class="form-control" name="urutan" 
+                                       value="<?= $program['urutan'] ?>" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Status</label>
+                                <select class="form-control" name="status">
+                                    <option value="published" <?= $program['status'] === 'published' ? 'selected' : '' ?>>Published</option>
+                                    <option value="draft" <?= $program['status'] === 'draft' ? 'selected' : '' ?>>Draft</option>
+                                </select>
+                            </div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Deskripsi</label>

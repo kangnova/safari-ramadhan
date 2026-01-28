@@ -460,6 +460,9 @@ try {
                                                 <button class="btn btn-sm btn-info text-white" data-bs-toggle="modal" data-bs-target="#detailModalJadwal<?= $data['id'] ?>">
                                                     <i class="bi bi-eye"></i> Detail
                                                 </button>
+                                                <button class="btn btn-sm btn-danger text-white" onclick="deleteArsip('jadwal', <?= $data['id'] ?>)">
+                                                    <i class="bi bi-trash"></i> Hapus
+                                                </button>
                                             </td>
 
                                         <?php elseif ($type === 'safari' || $type === 'duta'): ?>
@@ -475,6 +478,9 @@ try {
                                             <td>
                                                 <button class="btn btn-sm btn-info text-white" data-bs-toggle="modal" data-bs-target="#detailModalSafari<?= $data['id'] ?>">
                                                     <i class="bi bi-eye"></i> Detail
+                                                </button>
+                                                <button class="btn btn-sm btn-danger text-white" onclick="deleteArsip('<?= $type ?>', <?= $data['id'] ?>)">
+                                                    <i class="bi bi-trash"></i> Hapus
                                                 </button>
                                             </td>
 
@@ -498,6 +504,9 @@ try {
                                             <td>
                                                 <button class="btn btn-sm btn-info text-white" data-bs-toggle="modal" data-bs-target="#detailModalIfthar<?= $data['id'] ?>">
                                                     <i class="bi bi-eye"></i> Detail
+                                                </button>
+                                                <button class="btn btn-sm btn-danger text-white" onclick="deleteArsip('ifthar', <?= $data['id'] ?>)">
+                                                    <i class="bi bi-trash"></i> Hapus
                                                 </button>
                                             </td>
                                         <?php endif; ?>
@@ -630,6 +639,50 @@ try {
                 order: [[0, 'asc']]
             });
         });
+
+        function deleteArsip(type, id) {
+            if (!confirm('Apakah Anda yakin ingin menghapus data arsip ini?')) {
+                return;
+            }
+
+            if (type === 'jadwal') {
+                // For Jadwal, use direct redirect with return URL
+                window.location.href = 'delete_jadwal.php?id=' + id + '&redirect=' + encodeURIComponent(window.location.href);
+            } else {
+                // For others (Ifthar, Safari, Duta), use AJAX
+                let endpoint = '';
+                if (type === 'ifthar') {
+                    endpoint = 'delete_ifthar.php';
+                } else if (type === 'safari' || type === 'duta') {
+                    endpoint = 'delete_lembaga.php';
+                } else {
+                    alert('Tipe arsip tidak dikenal!');
+                    return;
+                }
+
+                // Create form data
+                let formData = new FormData();
+                formData.append('id', id);
+
+                fetch(endpoint, {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Data berhasil dihapus');
+                        location.reload();
+                    } else {
+                        alert('Gagal menghapus: ' + (data.message || 'Unknown error'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Terjadi kesalahan saat menghapus data.');
+                });
+            }
+        }
     </script>
 </body>
 </html>

@@ -1,130 +1,44 @@
 <?php
-$host = 'localhost';
-$username = 'gnborid_safariramadhan2025';
-$password = 'gnborid_safariramadhan2025';
-$database = 'gnborid_safariramadhan2025';
-
-try {
-    // Buat koneksi PDO
-    $conn = new PDO("mysql:host=$host;dbname=$database", $username, $password);
-    
-    // Set mode error PDO
-    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    
-    // Set default fetch mode array asosiatif
-    $conn->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-    
-    // Pastikan koneksi menggunakan UTF-8
-    $conn->exec("SET NAMES utf8");
-    
-} catch(PDOException $e) {
-    // Log error koneksi untuk troubleshooting
-    error_log("Koneksi database gagal: " . $e->getMessage());
-    
-    // Tampilkan pesan user-friendly (tidak menampilkan detail sensitif)
-    die("Maaf, terjadi masalah saat menghubungkan ke database. Silakan coba lagi nanti.");
-}
+// donasi_form.php
+// Halaman Form Donasi (Frontend)
+// Logika pemrosesan data sekarang ditangani oleh process_donasi.php
 
 session_start();
+require_once 'koneksi.php';
 
-// Generate dan simpan CSRF token
+// Generate dan simpan CSRF token jika belum ada
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
-// Function untuk format rupiah
+// Function untuk format rupiah (helper view)
 function formatRupiah($nominal) {
     return 'Rp ' . number_format($nominal, 0, ',', '.');
 }
 
-// Handling AJAX request
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Set header JSON
-    header('Content-Type: application/json');
-    
-    // Pastikan respons selalu JSON yang valid
-    ob_start();
-    
-    // Validasi CSRF token
-    if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
-        echo json_encode([
-            'status' => 'error',
-            'message' => 'Validasi keamanan gagal. Silakan muat ulang halaman.'
-        ]);
-        exit;
-    }
-    
-    try {
-        // Ambil dan sanitasi data
-        $nominal = str_replace(['Rp', '.', ' '], '', $_POST['nominal']);
-        
-        // Validasi nominal minimum
-        if ((int)$nominal < 20000) {
-            throw new Exception('Nominal donasi minimum adalah Rp20.000');
-        }
-        
-        $nama = htmlspecialchars($_POST['nama']);
-        
-        // Validasi email
-        $email = filter_var($_POST['email'], FILTER_SANITIZE_EMAIL);
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            throw new Exception('Format email tidak valid');
-        }
-        
-        // Validasi dan format nomor WhatsApp
-        $whatsapp = preg_replace('/[^0-9]/', '', $_POST['whatsapp']);
-        if (strlen($whatsapp) < 10 || strlen($whatsapp) > 15) {
-            throw new Exception('Nomor WhatsApp tidak valid');
-        }
-        
-        // Awali dengan 62 jika dimulai dengan 0
-        if (substr($whatsapp, 0, 1) === '0') {
-            $whatsapp = '62' . substr($whatsapp, 1);
-        }
-        
-        $is_anonim = isset($_POST['anonim']) ? 1 : 0;
-        $token = 'INV-TRX-' . date('Ymd') . rand(100000, 999999);
+// Ambil data program dari database
+$programId = isset($_GET['id']) ? intval($_GET['id']) : 0;
+$programJudul = "Ifthar Ramadhan"; // Default
 
-        // Query insert
-        $sql = "INSERT INTO donasi (nama_donatur, nominal, is_anonim, email, whatsapp, token) VALUES (?, ?, ?, ?, ?, ?)";
-        $stmt = $conn->prepare($sql);
-        
-        if ($stmt->execute([$nama, $nominal, $is_anonim, $email, $whatsapp, $token])) {
-            // Buat token baru setelah berhasil untuk mencegah resubmit
-            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-            
-            echo json_encode([
-                'status' => 'success',
-                'token' => $token,
-                'message' => 'Data berhasil disimpan'
-            ]);
-        } else {
-            throw new Exception('Gagal menyimpan data');
+try {
+    if ($programId > 0) {
+        $stmt = $conn->prepare("SELECT judul FROM program_donasi WHERE id = ?");
+        $stmt->execute([$programId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($row) {
+            $programJudul = $row['judul'];
         }
-        
-    } catch (Exception $e) {
-        echo json_encode([
-            'status' => 'error',
-            'message' => $e->getMessage()
-        ]);
-    }
-    
-    // Bersihkan output buffer dan pastikan hanya respons JSON yang dikirim
-    $output = ob_get_clean();
-    
-    // Periksa jika output sudah berupa JSON valid
-    if (json_decode($output) === null && json_last_error() !== JSON_ERROR_NONE) {
-        // Jika bukan JSON valid, kirim respons error JSON yang valid
-        echo json_encode([
-            'status' => 'error',
-            'message' => 'Terjadi kesalahan pada server'
-        ]);
     } else {
-        // Kirim output asli jika sudah berupa JSON valid
-        echo $output;
+        // Jika tidak ada ID, ambil program aktif terbaru ATAU default
+        $stmt = $conn->query("SELECT id, judul FROM program_donasi WHERE status = 'active' ORDER BY created_at DESC LIMIT 1");
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($row) {
+            $programId = $row['id'];
+            $programJudul = $row['judul'];
+        }
     }
-    
-    exit;
+} catch (PDOException $e) {
+    // Fallback default
 }
 ?>
 
@@ -133,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Form Donasi - Ifthar Ramadhan</title>
+    <title>Form Donasi - <?= htmlspecialchars($programJudul) ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -412,14 +326,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <a href="index.php" class="back-button me-3">
                     <i class="fas fa-arrow-left"></i>
                 </a>
-                <h5 class="mb-0">Ifthar Ramadhan</h5>
+                <h5 class="mb-0"><?= htmlspecialchars($programJudul) ?></h5>
             </div>
         </div>
 
         <!-- Content -->
         <form id="donationForm" class="p-4">
-            <!-- Hidden CSRF Token -->
+            <!-- Hidden CSRF Token & Program ID -->
             <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+            <input type="hidden" name="program_id" value="<?php echo $programId; ?>">
             
             <!-- Nominal Section -->
             <div class="nominal-section">
@@ -756,7 +671,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 showSuccessModal();
                 
                 const formData = new FormData(this);
-                const response = await fetch(window.location.href, {
+                const response = await fetch('process_donasi.php', {
                     method: 'POST',
                     body: formData,
                     headers: {

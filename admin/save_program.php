@@ -48,15 +48,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // Insert into database
-        $query = "INSERT INTO program (nama_program, deskripsi, manfaat_kegiatan, gambar, tgl_update) 
-                 VALUES (:nama, :deskripsi, :manfaat, :gambar, NOW())";
+        $query = "INSERT INTO program (nama_program, deskripsi, manfaat_kegiatan, gambar, urutan, status, tgl_update) 
+                 VALUES (:nama, :deskripsi, :manfaat, :gambar, :urutan, :status, NOW())";
         
         $stmt = $conn->prepare($query);
         $stmt->execute([
             ':nama' => $_POST['nama_program'],
             ':deskripsi' => $_POST['deskripsi'],
             ':manfaat' => $_POST['manfaat_kegiatan'],
-            ':gambar' => $newFilename
+            ':gambar' => $newFilename,
+            ':urutan' => $_POST['urutan'] ?? 0,
+            ':status' => $_POST['status'] ?? 'published'
         ]);
 
         $_SESSION['success'] = 'Program berhasil ditambahkan';

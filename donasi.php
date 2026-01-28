@@ -9,93 +9,79 @@ $pdo = $conn; // Menggunakan variabel $conn dari koneksi.php
  * @param int|null $campaignId ID kampanye, kosongkan untuk semua kampanye
  * @return array Data gambar slider
  */
-function getSliderImages($pdo, $campaignId = null) {
-    $query = "SELECT * FROM slider_images WHERE is_active = 1";
-    $params = [];
+// Ambil ID program dari query string
+$programId = isset($_GET['id']) ? intval($_GET['id']) : null;
+
+// Ambil Data Program Utama (Selected or Default)
+function getProgramDetail($pdo, $id = null) {
+    if ($id) {
+        $stmt = $pdo->prepare("SELECT * FROM program_donasi WHERE id = ?");
+        $stmt->execute([$id]);
+        $program = $stmt->fetch(PDO::FETCH_ASSOC);
+    } 
     
-    if ($campaignId !== null) {
-        $query .= " AND (campaign_id = ? OR campaign_id IS NULL)";
-        $params[] = $campaignId;
+    // Jika tidak ada ID yang diminta, cek apakah ada Program Unggulan yang diset di admin
+    if (!$id && empty($program)) {
+        $stmt = $pdo->query("SELECT program_id FROM target_donasi WHERE is_active = 1 ORDER BY id DESC LIMIT 1");
+        $featured = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($featured && !empty($featured['program_id'])) {
+            $stmt = $pdo->prepare("SELECT * FROM program_donasi WHERE id = ?");
+            $stmt->execute([$featured['program_id']]);
+            $program = $stmt->fetch(PDO::FETCH_ASSOC);
+        }
     }
     
-    $query .= " ORDER BY sort_order ASC";
+    // Jika masih tidak ada program (tidak ada ID, tidak ada Featured), ambil yang terbaru/aktif
+    if (empty($program)) {
+        $stmt = $pdo->query("SELECT * FROM program_donasi WHERE status = 'active' ORDER BY created_at DESC LIMIT 1");
+        $program = $stmt->fetch(PDO::FETCH_ASSOC);
+    }
     
-    $stmt = $pdo->prepare($query);
-    $stmt->execute($params);
-    return $stmt->fetchAll(PDO::FETCH_ASSOC); // Memastikan data dikembalikan sebagai array asosiatif
+    return $program;
 }
 
-// Ambil ID kampanye dari query string atau set default
-$campaignId = isset($_GET['campaign_id']) ? intval($_GET['campaign_id']) : null;
+$program = getProgramDetail($pdo, $programId);
 
-// Ambil slider yang aktif
-$sliderImages = getSliderImages($pdo, $campaignId);
-
-// Jika tidak ada gambar, buat array default
-if (empty($sliderImages)) {
-    // Data default jika tidak ada slider di database
-    $sliderImages = [
-        [
-            'image_path' => 'img/donasi/default.jpg',
-            'alt_text' => 'Ifthar Ramadhan 1'
-        ],
-        [
-            'image_path' => 'img/donasi/default1.jpg',
-            'alt_text' => 'Ifthar Ramadhan 2'
-        ],
-        [
-            'image_path' => 'img/donasi/default2.jpg',
-            'alt_text' => 'Ifthar Ramadhan 3'
-        ]
+// Jika database kosong sama sekali
+if (!$program) {
+    $program = [
+        'id' => 0,
+        'judul' => 'Ifthar Ramadhan',
+        'deskripsi' => 'Program berbagi hidangan berbuka puasa untuk sesama.',
+        'target_nominal' => 350000000,
+        'tanggal_selesai' => date('Y-m-d', strtotime('+30 days')),
+        'gambar_utama' => 'img/donasi/default.jpg'
     ];
 }
 
-// Fungsi-fungsi untuk mendapatkan data dari database
+$programId = $program['id']; // Pastikan ID terisi dari hasil query
 
-// Get target donasi
-function getTargetDonasi($pdo) {
+// Get total donasi per program
+function getTotalDonasi($pdo, $programId) {
     try {
-        $stmt = $pdo->query("SELECT * FROM target_donasi WHERE is_active = 1 LIMIT 1");
-        $target = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        // Jika tidak ada yang aktif, ambil yang terbaru
-        if (!$target) {
-            $stmt = $pdo->query("SELECT * FROM target_donasi ORDER BY id DESC LIMIT 1");
-            $target = $stmt->fetch(PDO::FETCH_ASSOC);
+        $stmt = $pdo->prepare("SELECT SUM(nominal) as total FROM donasi WHERE status = 'success' AND (program_id = ? OR program_id IS NULL)"); // Fallback logic for old donations
+        if ($programId > 1) { // Jika program baru, strictly check ID
+             $stmt = $pdo->prepare("SELECT SUM(nominal) as total FROM donasi WHERE status = 'success' AND program_id = ?");
         }
-        
-        return $target ?: [
-            'jumlah' => 350000000,
-            'deskripsi' => '',
-            'tanggal_selesai' => date('Y-m-d', strtotime('+40 days'))
-        ];
-    } catch (PDOException $e) {
-        // Kembalikan nilai default jika tabel belum ada
-        return [
-            'jumlah' => 350000000,
-            'deskripsi' => '',
-            'tanggal_selesai' => date('Y-m-d', strtotime('+40 days'))
-        ];
-    }
-}
-
-// Get total donasi
-function getTotalDonasi($pdo) {
-    try {
-        $stmt = $pdo->query("SELECT SUM(nominal) as total FROM donasi WHERE status = 'success'");
+        $stmt->execute([$programId]);
         return $stmt->fetch(PDO::FETCH_ASSOC)['total'] ?: 0;
     } catch (PDOException $e) {
-        return 0; // Default jika tabel donasi belum ada
+        return 0;
     }
 }
 
-// Get jumlah donatur
-function getJumlahDonatur($pdo) {
+// Get jumlah donatur per program
+function getJumlahDonatur($pdo, $programId) {
     try {
-        $stmt = $pdo->query("SELECT COUNT(*) as count FROM donasi WHERE status = 'success'");
+        $stmt = $pdo->prepare("SELECT COUNT(*) as count FROM donasi WHERE status = 'success' AND (program_id = ? OR program_id IS NULL)");
+        if ($programId > 1) {
+             $stmt = $pdo->prepare("SELECT COUNT(*) as count FROM donasi WHERE status = 'success' AND program_id = ?");
+        }
+        $stmt->execute([$programId]);
         return $stmt->fetch(PDO::FETCH_ASSOC)['count'] ?: 0;
     } catch (PDOException $e) {
-        return 0; // Default jika tabel donasi belum ada
+        return 0;
     }
 }
 
@@ -103,12 +89,12 @@ function getJumlahDonatur($pdo) {
 function hitungSisaHari($tanggalSelesai) {
     $sekarang = new DateTime();
     $selesai = new DateTime($tanggalSelesai);
-    $selisih = $sekarang->diff($selesai);
     
     if ($selesai < $sekarang) {
-        return 0; // Kampanye sudah selesai
+        return 0; 
     }
     
+    $selisih = $sekarang->diff($selesai);
     return $selisih->days;
 }
 
@@ -117,29 +103,60 @@ function formatRupiah($nominal) {
     return 'Rp ' . number_format($nominal, 0, ',', '.');
 }
 
-// Ambil data target dan donasi
-$targetDonasi = getTargetDonasi($pdo);
-$totalDonasi = getTotalDonasi($pdo);
-$jumlahDonatur = getJumlahDonatur($pdo);
-$sisaHari = hitungSisaHari($targetDonasi['tanggal_selesai']);
+// Assign variables for view
+$titleDonasi = $program['judul'];
+$targetDonasi = [
+    'jumlah' => $program['target_nominal'],
+    'deskripsi' => $program['deskripsi'],
+    'tanggal_selesai' => $program['tanggal_selesai']
+];
 
-// Hitung persentase
+$totalDonasi = getTotalDonasi($pdo, $programId);
+$jumlahDonatur = getJumlahDonatur($pdo, $programId);
+$sisaHari = hitungSisaHari($targetDonasi['tanggal_selesai']);
 $persentase = ($targetDonasi['jumlah'] > 0) ? min(100, ($totalDonasi / $targetDonasi['jumlah']) * 100) : 0;
 
+// Slider logic: Use gambar_utama as first slide, fallback to existing logic if needed
+$sliderImages = [];
+if (!empty($program['gambar_utama']) && file_exists($program['gambar_utama'])) {
+    $sliderImages[] = [
+        'image_path' => $program['gambar_utama'],
+        'alt_text' => $program['judul']
+    ];
+} else {
+    // Default images
+    $sliderImages[] = ['image_path' => 'img/donasi/default.jpg', 'alt_text' => 'Default 1'];
+}
 
-// Query untuk mengambil donasi terbaru
+// Ambil Donasi Terbaru per Program
 $query = "SELECT nama_donatur, nominal, is_anonim, created_at 
           FROM donasi 
-          WHERE status = 'success' 
+          WHERE status = 'success' AND (program_id = ? OR program_id IS NULL)
           ORDER BY created_at DESC 
           LIMIT 5";
+if ($programId > 1) {
+    $query = "SELECT nama_donatur, nominal, is_anonim, created_at 
+          FROM donasi 
+          WHERE status = 'success' AND program_id = ?
+          ORDER BY created_at DESC 
+          LIMIT 5";
+}
 
 try {
     $stmt = $conn->prepare($query);
-    $stmt->execute();
+    $stmt->execute([$programId]);
     $donasi_terbaru = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch(PDOException $e) {
-    die("Error query: " . $e->getMessage());
+    $donasi_terbaru = [];
+}
+
+// Ambil Program Lainnya
+try {
+    $stmtOther = $conn->prepare("SELECT id, judul, gambar_utama FROM program_donasi WHERE id != ? AND status = 'active' LIMIT 5");
+    $stmtOther->execute([$programId]);
+    $otherPrograms = $stmtOther->fetchAll(PDO::FETCH_ASSOC);
+} catch(PDOException $e) {
+    $otherPrograms = [];
 }
 
 // Fungsi untuk menghitung waktu yang lalu dengan lebih akurat
@@ -176,18 +193,8 @@ function debug_time($created_at) {
 <html lang="id">
     <?php
 // Mengambil judul dari tabel paket_donasi (misal judul terbaru atau yang aktif)
-$titleDonasi = "Ifthar Ramadhan"; // Default judul
+// $titleDonasi sudah diset di atas dari data program
 
-try {
-    $stmtTitle = $conn->query("SELECT judul FROM paket_donasi ORDER BY tanggal_update DESC LIMIT 1");
-    $resultTitle = $stmtTitle->fetch(PDO::FETCH_ASSOC);
-    
-    if ($resultTitle && !empty($resultTitle['judul'])) {
-        $titleDonasi = $resultTitle['judul'] . " - Ifthar Ramadhan";
-    }
-} catch(PDOException $e) {
-    // Jika error, gunakan default title
-}
 ?>
 <head>
     <meta charset="UTF-8">
@@ -656,6 +663,27 @@ try {
                     <?php endif; ?>
                 </div>
 
+                <!-- Section Program Lainnya -->
+                <?php if (!empty($otherPrograms)): ?>
+                <div class="other-programs mb-4">
+                    <h5 class="mb-3" style="color: var(--dark-blue); border-bottom: 2px solid var(--yellow); display: inline-block; padding-bottom: 5px;">Program Lainnya</h5>
+                    <div class="d-flex overflow-auto pb-2" style="gap: 15px;">
+                        <?php foreach ($otherPrograms as $op): ?>
+                        <a href="donasi.php?id=<?= $op['id'] ?>" class="text-decoration-none text-dark" style="min-width: 140px; width: 140px;">
+                            <div class="card h-100 border-0 shadow-sm">
+                                <img src="<?= !empty($op['gambar_utama']) ? htmlspecialchars($op['gambar_utama']) : 'img/donasi/default.jpg' ?>" 
+                                     class="card-img-top" alt="<?= htmlspecialchars($op['judul']) ?>" 
+                                     style="height: 100px; object-fit: cover; border-radius: 8px 8px 0 0;">
+                                <div class="card-body p-2">
+                                    <h6 class="card-title small mb-0 fw-bold" style="font-size: 0.9rem; line-height: 1.2;"><?= htmlspecialchars($op['judul']) ?></h6>
+                                </div>
+                            </div>
+                        </a>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+                <?php endif; ?>
+
                 <div class="recent-donations">
                     <h5>Donasi Terbaru</h5>
                     <?php if (count($donasi_terbaru) > 0): ?>
@@ -681,7 +709,7 @@ try {
                 <button class="share-button">
                     <i class="fas fa-share-alt me-2"></i> Bagikan
                 </button>
-                <a href="donasi_form.php" class="btn btn-success btn-lg">Donasi Sekarang</a>
+                <a href="donasi_form.php?id=<?= $programId ?>" class="btn btn-success btn-lg">Donasi Sekarang</a>
             </div>
         </div>
         

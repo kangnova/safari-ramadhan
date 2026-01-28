@@ -19,12 +19,22 @@ $totalIfthar = 0;
 $iftharPerKecamatan = [];
 $latestPendaftarIfthar = [];
 $totalDutaGNB = 0;
+$totalPendamping = 0;
 $totalPengisi = 0;
 $totalJadwal = 0;
 $topPengisi = [];
 
 // Fetch summary data
 try {
+    // Simple Counts (Moved to top for robustness)
+    $stmt = $conn->prepare("SELECT COUNT(*) FROM pendamping");
+    $stmt->execute();
+    $totalPendamping = $stmt->fetchColumn();
+
+    $stmt = $conn->prepare("SELECT COUNT(*) FROM pengisi");
+    $stmt->execute();
+    $totalPengisi = $stmt->fetchColumn();
+
     // Count total programs
     $stmt = $conn->prepare("SELECT COUNT(*) FROM program WHERE YEAR(tgl_update) = :tahun");
     $stmt->execute(['tahun' => $tahun]);
@@ -61,25 +71,32 @@ try {
     $stmt->execute(['tahun' => $tahun]);
     $totalIfthar = $stmt->fetchColumn();
     
+    $stmt = $conn->prepare("SELECT COUNT(*) FROM ifthar WHERE YEAR(created_at) = :tahun");
+    $stmt->execute(['tahun' => $tahun]);
+    $totalIfthar = $stmt->fetchColumn();
+    
+    // Ifthar currently has no kecamatan column, so we skip this stats
+    /*
     $stmt = $conn->prepare("SELECT kecamatan, COUNT(*) as total FROM ifthar WHERE YEAR(created_at) = :tahun GROUP BY kecamatan");
     $stmt->execute(['tahun' => $tahun]);
     $iftharPerKecamatan = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    */
+    $iftharPerKecamatan = []; // Empty for now
+    
     
     $stmt = $conn->prepare("SELECT * FROM ifthar WHERE YEAR(created_at) = :tahun ORDER BY created_at DESC LIMIT 5");
     $stmt->execute(['tahun' => $tahun]);
     $latestPendaftarIfthar = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+
+
     // Duta GNB join with Lembaga to filter by year
     $stmt = $conn->prepare("SELECT COUNT(*) FROM persetujuan_lembaga pl JOIN lembaga l ON pl.lembaga_id = l.id WHERE pl.duta_gnb = 1 AND YEAR(l.created_at) = :tahun");
     $stmt->execute(['tahun' => $tahun]);
     $totalDutaGNB = $stmt->fetchColumn();
-
-    $stmt = $conn->prepare("SELECT COUNT(*) FROM pengisi");
-    $stmt->execute();
-    $totalPengisi = $stmt->fetchColumn();
     
-    $stmt = $conn->prepare("SELECT COUNT(*) FROM jadwal_safari WHERE YEAR(tanggal) = :tahun");
-    $stmt->execute(['tahun' => $tahun]);
+    $stmt = $conn->prepare("SELECT COUNT(*) FROM jadwal_safari");
+    $stmt->execute();
     $totalJadwal = $stmt->fetchColumn();
     
     $stmt = $conn->prepare("SELECT 
@@ -124,6 +141,13 @@ try {
                 <p class="text-muted">Kelola program Safari Ramadhan dengan mudah dan efisien.</p>
             </div>
         </div>
+
+        <?php if(isset($error)): ?>
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i> <?= htmlspecialchars($error) ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        <?php endif; ?>
 
         <!-- Stats Cards -->
         <div class="row g-4 mb-4">
@@ -231,6 +255,27 @@ try {
             </div>
         </div>
     </div>
+
+    <!-- Pendamping Card -->
+    <div class="col-md-4">
+        <div class="card text-white bg-secondary h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title mb-0">Total Pendamping</h6>
+                        <h2 class="my-2"><?= $totalPendamping ?></h2>
+                        <p class="card-text mb-0">Assisten Safari</p>
+                    </div>
+                    <i class="bi bi-person-badge fs-1"></i>
+                </div>
+            </div>
+            <div class="card-footer bg-secondary border-light">
+                <a href="pendamping.php" class="text-white text-decoration-none">
+                    Lihat detail <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+    </div>
 </div>
 
         <!-- Pendaftar Tables -->
@@ -288,8 +333,8 @@ try {
                                 <tbody>
                                     <?php foreach ($latestPendaftarIfthar as $pendaftar): ?>
                                     <tr>
-                                        <td><?= htmlspecialchars($pendaftar['nama_lembaga']) ?></td>
-                                        <td><?= ucwords(str_replace('_', ' ', $pendaftar['kecamatan'])) ?></td>
+                                        <td><?= htmlspecialchars($pendaftar['asal_lembaga']) ?></td>
+                                        <td>-</td> <!-- Kecamatan not available in ifthar table -->
                                         <td><?= $pendaftar['jumlah_santri'] ?></td>
                                         <td><?= date('d/m/Y', strtotime($pendaftar['created_at'])) ?></td>
                                     </tr>
@@ -345,6 +390,9 @@ try {
                         <h5 class="card-title mb-0">Statistik per Kecamatan Ifthar</h5>
                     </div>
                     <div class="card-body">
+                        <?php if(empty($iftharPerKecamatan)): ?>
+                            <p class="text-center text-muted my-5">Data statistik kecamatan belum tersedia untuk Ifthar.</p>
+                        <?php else: ?>
                         <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
                             <table class="table table-hover">
                                 <thead>
@@ -363,6 +411,7 @@ try {
                                 </tbody>
                             </table>
                         </div>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>

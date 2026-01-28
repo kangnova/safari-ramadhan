@@ -64,6 +64,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                      deskripsi = :deskripsi,
                      manfaat_kegiatan = :manfaat,
                      gambar = :gambar,
+                     urutan = :urutan,
+                     status = :status,
                      tgl_update = NOW()
                  WHERE id_program = :id";
         
@@ -73,6 +75,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ':deskripsi' => $_POST['deskripsi'],
             ':manfaat' => $_POST['manfaat_kegiatan'],
             ':gambar' => $newFilename,
+            ':urutan' => $_POST['urutan'] ?? 0,
+            ':status' => $_POST['status'] ?? 'published',
             ':id' => $_POST['id_program']
         ]);
 

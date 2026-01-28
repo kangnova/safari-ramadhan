@@ -26,6 +26,11 @@ $menuGroups = [
             'title' => 'Profile',
             'icon' => 'person-circle',
             'link' => 'profile.php'
+        ],
+        [
+            'title' => 'Pengaturan',
+            'icon' => 'gear',
+            'link' => 'pengaturan.php'
         ]
     ],
     'content' => [
@@ -52,11 +57,6 @@ $menuGroups = [
                 'icon' => 'images',
                 'link' => 'kelola_slide.php'
             ],
-            [
-                'title' => 'Tim Safari',
-                'icon' => 'people',
-                'link' => 'pengisi.php'
-            ]
         ]
     ],
     'pendaftar' => [
@@ -95,6 +95,16 @@ $menuGroups = [
                 'link' => 'jadwal.php'
             ],
             [
+                'title' => 'Tim Safari',
+                'icon' => 'people',
+                'link' => 'pengisi.php'
+            ],
+            [
+                'title' => 'Pendamping',
+                'icon' => 'person-badge',
+                'link' => 'pendamping.php'
+            ],
+            [
                 'title' => 'Arsip Jadwal',
                 'icon' => 'archive',
                 'link' => 'arsip.php?type=jadwal'
@@ -111,6 +121,11 @@ $menuGroups = [
                 'link' => 'donasi.php'
             ],
             [
+                'title' => 'Program Donasi',
+                'icon' => 'grid',
+                'link' => 'program_donasi.php'
+            ],
+            [
                 'title' => 'Manajemen Donasi',
                 'icon' => 'list-check',
                 'link' => 'managementdonasi.php'
@@ -125,11 +140,7 @@ $menuGroups = [
                 'icon' => 'file-text',
                 'link' => 'laporan.php'
             ],
-            [
-                'title' => 'Paket Donasi',
-                'icon' => 'box',
-                'link' => 'profil_donasi.php'
-            ],
+
             [
                 'title' => 'Nominal Donasi',
                 'icon' => 'currency-dollar',

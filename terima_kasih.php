@@ -61,6 +61,26 @@ if (!$donasi) {
 
 // Format nominal donasi untuk ditampilkan
 $nominal_display = 'Rp ' . number_format($donasi['nominal'], 0, ',', '.');
+
+// Perbaiki tampilan metode pembayaran
+$metode_display = $donasi['metode_pembayaran'];
+if (strpos($metode_display, 'method_') === 0) {
+    $method_id = substr($metode_display, 7);
+    if (is_numeric($method_id)) {
+        try {
+            $stmt = $pdo->prepare("SELECT nama_bank FROM logo_bank WHERE id = ?");
+            $stmt->execute([$method_id]);
+            $bank = $stmt->fetch();
+            if ($bank) {
+                $metode_display = $bank['nama_bank'];
+            }
+        } catch (PDOException $e) {
+            // Ignore error, fallback to original string or clean up
+        }
+    }
+}
+// Fallback cleanup for old hardcoded values just in case
+$metode_display = strtoupper($metode_display);
 ?>
 
 <!DOCTYPE html>
@@ -270,7 +290,7 @@ $nominal_display = 'Rp ' . number_format($donasi['nominal'], 0, ',', '.');
                 
                 <div class="detail-item">
                     <span>Metode Pembayaran</span>
-                    <span class="fw-bold"><?php echo htmlspecialchars($donasi['metode_pembayaran']); ?></span>
+                    <span class="fw-bold"><?php echo htmlspecialchars($metode_display); ?></span>
                 </div>
                 
                 <div class="detail-item">

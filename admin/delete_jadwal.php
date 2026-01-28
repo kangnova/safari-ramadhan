@@ -32,12 +32,20 @@ if(isset($_GET['id'])) {
         $_SESSION['error'] = "Error: " . $e->getMessage();
     }
     
-    // Redirect kembali ke halaman jadwal
-    header("Location: jadwal.php");
+    // Redirect kembali ke halaman jadwal atau halaman yang ditentukan
+    if (isset($_GET['redirect'])) {
+        header("Location: " . $_GET['redirect']);
+    } else {
+        header("Location: jadwal.php");
+    }
     exit();
 } else {
     $_SESSION['error'] = "ID tidak valid!";
-    header("Location: jadwal.php");
+    if (isset($_GET['redirect'])) {
+        header("Location: " . $_GET['redirect']);
+    } else {
+        header("Location: jadwal.php");
+    }
     exit();
 }
 ?>

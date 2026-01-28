@@ -1,4 +1,5 @@
 <?php
+session_start();
 require_once 'koneksi.php';
 require_once 'hit_counter.php';
 
@@ -15,6 +16,19 @@ try {
     
 } catch(PDOException $e) {
     $error = "Error: " . $e->getMessage();
+}
+
+// Fetch Program Status
+$stmtS = $conn->prepare("SELECT setting_value FROM settings WHERE setting_key = 'safari_program_status'");
+$stmtS->execute();
+$programStatus = $stmtS->fetchColumn() ?: 'active';
+
+// Admin Exception
+if (isset($_SESSION['authenticated']) && $_SESSION['authenticated'] === true) {
+    if ($programStatus === 'ended') {
+        $programStatus = 'active';
+        $adminMessage = '<div class="alert alert-warning text-center mb-0 rounded-0">MODE ADMIN: Jadwal terlihat karena Anda login sebagai Admin (Status Asli: Program Selesai)</div>';
+    }
 }
 ?>
 
@@ -190,12 +204,15 @@ try {
 <body>
     <!-- Navbar -->
     <?php include 'navbar.php'; ?>
+    
+    <?php if (isset($adminMessage)) echo $adminMessage; ?>
 
 
 
     <!-- Content -->
     <div class="content-wrapper">
         <div class="container">
+            <?php if ($programStatus === 'active'): ?>
             <div class="table-wrapper">
                 <div class="table-responsive">
                     <table class="table table-hover" id="jadwalTable">
@@ -247,6 +264,19 @@ try {
                     </table>
                 </div>
             </div>
+            <?php else: ?>
+                <div class="alert alert-info text-center" style="background-color: #e0f7fa; color: #006064; border-color: #b2ebf2; padding: 3rem; border-radius: 10px;">
+                    <i class='bx bx-calendar-x' style="font-size: 4rem; margin-bottom: 20px;"></i>
+                    <h3 class="alert-heading">Program Selesai</h3>
+                    <p style="font-size: 1.1rem;">
+                        Mohon maaf, jadwal Safari Ramadhan tidak tersedia karena program telah selesai dilaksanakan.
+                        <br>Sampai jumpa di Ramadhan tahun depan!
+                    </p>
+                    <div class="mt-4">
+                        <a href="index.php" class="btn btn-primary"><i class='bx bx-home'></i> Kembali ke Beranda</a>
+                    </div>
+                </div>
+            <?php endif; ?>
         </div>
     </div>
 

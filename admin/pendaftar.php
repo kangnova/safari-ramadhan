@@ -12,6 +12,7 @@ require_once '../koneksi.php';
 // Initialize variables
 $tahun = isset($_GET['tahun']) ? $_GET['tahun'] : date('Y');
 $kecamatan = isset($_GET['kecamatan']) ? $_GET['kecamatan'] : '';
+$materi = isset($_GET['materi']) ? $_GET['materi'] : '';
 
 // Handle Quota Update
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_quota'])) {
@@ -111,6 +112,12 @@ try {
     if ($kecamatan) {
         $query .= " AND l.kecamatan = :kecamatan";
         $params['kecamatan'] = $kecamatan;
+    }
+
+    // Add Materi Filter (Subquery to preserve all selected materials in display)
+    if ($materi) {
+        $query .= " AND l.id IN (SELECT lembaga_id FROM materi_dipilih WHERE materi = :materi_filter)";
+        $params['materi_filter'] = $materi;
     }
 
     $query .= "
@@ -220,6 +227,19 @@ try {
                             <?php foreach ($listKecamatan as $kec): ?>
                                 <option value="<?= htmlspecialchars($kec) ?>" <?= htmlspecialchars($kecamatan) == $kec ? 'selected' : '' ?>>
                                     <?= htmlspecialchars($kec) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="col-auto ms-3">
+                        <label class="fw-bold">Filter Materi:</label>
+                    </div>
+                    <div class="col-auto">
+                        <select name="materi" class="form-select" onchange="this.form.submit()">
+                            <option value="">-- Semua Materi --</option>
+                            <?php foreach ($statistikMateri as $mat): ?>
+                                <option value="<?= htmlspecialchars($mat['materi']) ?>" <?= htmlspecialchars($materi) == $mat['materi'] ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($mat['materi']) ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
@@ -342,10 +362,17 @@ try {
             <div class="card-header bg-white">
                 <div class="d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">
-                        <?= $kecamatan ? 'Daftar Lembaga di ' . htmlspecialchars($kecamatan) : 'Data Semua Pendaftar' ?>
+                    <h5 class="mb-0">
+                        <?php 
+                        $title = 'Data Pendaftar';
+                        if ($kecamatan) $title .= ' di ' . htmlspecialchars($kecamatan);
+                        if ($materi) $title .= ' - Materi: ' . htmlspecialchars($materi);
+                        echo $title;
+                        ?>
+                    </h5>
                     </h5>
                     <div>
-                        <a href="export-excel.php<?= $kecamatan ? '?kecamatan='.urlencode($kecamatan) : '' ?>" class="btn btn-success btn-sm">
+                        <a href="export-excel.php?tahun=<?= $tahun ?><?= $kecamatan ? '&kecamatan='.urlencode($kecamatan) : '' ?><?= $materi ? '&materi='.urlencode($materi) : '' ?>" class="btn btn-success btn-sm">
                             <i class="bi bi-file-excel me-1"></i>Export Excel
                         </a>
                     </div>

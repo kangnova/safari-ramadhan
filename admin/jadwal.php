@@ -19,6 +19,7 @@ if(isset($_POST['tambah'])) {
         $lembaga_id = $_POST['lembaga_id'];
         $pengisi = $_POST['pengisi'];
         
+        // Insert jadwal
         $query = "INSERT INTO jadwal_safari (tanggal, jam, lembaga_id, pengisi, status) 
                   VALUES (:tanggal, :jam, :lembaga_id, :pengisi, 'pending')";
                   
@@ -29,6 +30,28 @@ if(isset($_POST['tambah'])) {
             ':lembaga_id' => $lembaga_id,
             ':pengisi' => $pengisi
         ]);
+        
+        $jadwal_id = $conn->lastInsertId();
+
+        // Insert Pendamping
+        if(isset($_POST['pendamping_id']) && !empty($_POST['pendamping_id'])) {
+            $pendamping_id = $_POST['pendamping_id'];
+            
+            // Get Pendamping Info
+            $stmt_p = $conn->prepare("SELECT nama, id FROM pendamping WHERE id = ?");
+            $stmt_p->execute([$pendamping_id]);
+            $p_data = $stmt_p->fetch(PDO::FETCH_ASSOC);
+            
+            if($p_data) {
+                $query_pendamping = "INSERT INTO pendamping_safari (jadwal_id, pendamping_id, nama_pendamping) VALUES (:jadwal_id, :pendamping_id, :nama_pendamping)";
+                $stmt_pendamping = $conn->prepare($query_pendamping);
+                $stmt_pendamping->execute([
+                    ':jadwal_id' => $jadwal_id,
+                    ':pendamping_id' => $p_data['id'],
+                    ':nama_pendamping' => $p_data['nama']
+                ]);
+            }
+        }
         
         $success = "Jadwal berhasil ditambahkan!";
         
@@ -63,11 +86,79 @@ if(isset($_POST['update_status'])) {
     }
 }
 
+// Proses update jadwal
+if(isset($_POST['update_jadwal'])) {
+    try {
+        $id = $_POST['id'];
+        $tanggal = $_POST['tanggal'];
+        $jam = $_POST['jam'];
+        $pengisi = $_POST['pengisi'];
+        
+        // Update jadwal info
+        $query = "UPDATE jadwal_safari SET tanggal = :tanggal, jam = :jam, pengisi = :pengisi WHERE id = :id";
+        $stmt = $conn->prepare($query);
+        $stmt->execute([
+            ':tanggal' => $tanggal,
+            ':jam' => $jam,
+            ':pengisi' => $pengisi,
+            ':id' => $id
+        ]);
+        
+        // Update Pendamping
+        if(isset($_POST['pendamping_id'])) {
+            $pendamping_id = $_POST['pendamping_id'];
+            
+            // Check current pendamping
+            $check_q = "SELECT id FROM pendamping_safari WHERE jadwal_id = ?";
+            $check_stmt = $conn->prepare($check_q);
+            $check_stmt->execute([$id]);
+            $exists = $check_stmt->fetch();
+            
+            // Get Pendamping Name
+            if(!empty($pendamping_id)) {
+                $p_stmt = $conn->prepare("SELECT nama FROM pendamping WHERE id = ?");
+                $p_stmt->execute([$pendamping_id]);
+                $p_name = $p_stmt->fetchColumn();
+                
+                if($exists) {
+                    // Update
+                    $up_q = "UPDATE pendamping_safari SET pendamping_id = :pid, nama_pendamping = :pname WHERE jadwal_id = :jid";
+                    $up_stmt = $conn->prepare($up_q);
+                    $up_stmt->execute([':pid' => $pendamping_id, ':pname' => $p_name, ':jid' => $id]);
+                } else {
+                    // Insert
+                    $in_q = "INSERT INTO pendamping_safari (jadwal_id, pendamping_id, nama_pendamping) VALUES (:jid, :pid, :pname)";
+                    $in_stmt = $conn->prepare($in_q);
+                    $in_stmt->execute([':jid' => $id, ':pid' => $pendamping_id, ':pname' => $p_name]);
+                }
+            } else {
+                 // If pendamping_id is empty, maybe we should delete the mapping? 
+                 // For now, let's keep it simple, if they select "Pilih Pendamping" (empty), we might want to clear it?
+                 // Let's assume selecting empty means no pendamping.
+                 if($exists) {
+                     $del_q = "DELETE FROM pendamping_safari WHERE jadwal_id = ?";
+                     $del_stmt = $conn->prepare($del_q);
+                     $del_stmt->execute([$id]);
+                 }
+            }
+        }
+
+        $success = "Jadwal berhasil diupdate!";
+        header("Location: ".$_SERVER['PHP_SELF']);
+        exit();
+    } catch(PDOException $e) {
+        $error = "Error: " . $e->getMessage();
+    }
+}
+
 // Ambil data jadwal dengan JOIN ke tabel lembaga
 try {
-    $query = "SELECT js.*, l.nama_lembaga, l.alamat, l.jumlah_santri, l.penanggung_jawab, l.no_wa, l.kecamatan
+    $query = "SELECT js.*, l.nama_lembaga, l.alamat, l.jumlah_santri, l.penanggung_jawab, l.no_wa, l.kecamatan, l.share_loc,
+              ps.pendamping_id, ps.nama_pendamping, p.no_hp as no_hp_pendamping
               FROM jadwal_safari js
               JOIN lembaga l ON js.lembaga_id = l.id 
+              LEFT JOIN pendamping_safari ps ON js.id = ps.jadwal_id
+              LEFT JOIN pendamping p ON ps.pendamping_id = p.id
               WHERE YEAR(js.tanggal) = YEAR(NOW())
               ORDER BY js.tanggal ASC, js.jam ASC";
     $stmt = $conn->prepare($query);
@@ -186,9 +277,7 @@ if(isset($_SESSION['success'])): ?>
     <?php unset($_SESSION['error']); ?>
 <?php endif; ?>
 
-        <a href="pengisi.php" class="btn btn-success">
-            <i class='bx bx-user-plus'></i> Tambah Pengisi
-        </a>
+
                     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#tambahModal">
                         <i class='bx bx-plus'></i> Tambah Jadwal
                     </button>
@@ -217,9 +306,9 @@ if(isset($_SESSION['success'])): ?>
                     <a href="export_excel.php" class="btn btn-success">
                         <i class="bi bi-file-excel me-2"></i>Export Excel
                     </a>
-                    <!--<a href="export_pdf.php" class="btn btn-danger">-->
-                    <!--    <i class="bi bi-file-pdf me-2"></i>Export PDF-->
-                    <!--</a>-->
+                    <a href="import_jadwal.php" class="btn btn-primary">
+                        <i class="bi bi-file-earmark-arrow-up me-2"></i>Import Jadwal
+                    </a>
                 </div>
             </div>
             <div class="col-md-4">
@@ -243,6 +332,8 @@ if(isset($_SESSION['success'])): ?>
                                         <th>Jam</th>
                                         <th>Lembaga</th>
                                         <th>Pengisi</th>
+                                        <th>Pendamping</th>
+                                        <th>Maps</th>
                                         <th>Status</th>
                                         <th>Aksi</th>
                                     </tr>
@@ -271,6 +362,26 @@ if(isset($_SESSION['success'])): ?>
                                         <td><?= htmlspecialchars($row['nama_lembaga']) ?></td>
                                         <td><?= htmlspecialchars($row['pengisi']) ?></td>
                                         <td>
+                                            <?= htmlspecialchars($row['nama_pendamping'] ?? '-') ?>
+                                            <?php if(!empty($row['no_hp_pendamping'])): ?>
+                                                <br>
+                                                <a href="https://wa.me/<?= $row['no_hp_pendamping'] ?>" target="_blank" class="text-success text-decoration-none">
+                                                    <small><i class='bx bxl-whatsapp'></i> <?= $row['no_hp_pendamping'] ?></small>
+                                                </a>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <?php if(!empty($row['share_loc'])): ?>
+                                            <a href="<?= htmlspecialchars($row['share_loc']) ?>" 
+                                               target="_blank" 
+                                               class="btn btn-sm btn-secondary" title="Buka Maps">
+                                                <i class='bx bx-map'></i>
+                                            </a>
+                                            <?php else: ?>
+                                                -
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
                                             <span class="badge bg-<?= $row['status'] == 'terlaksana' ? 'success' : 
                                                 ($row['status'] == 'pending' ? 'warning' : 'danger') ?>">
                                                 <?= ucfirst($row['status']) ?>
@@ -279,20 +390,26 @@ if(isset($_SESSION['success'])): ?>
                                         <td>
     <button class="btn btn-sm btn-info" 
             data-bs-toggle="modal" 
-            data-bs-target="#detailModal<?= $row['id'] ?>">
+            data-bs-target="#detailModal<?= $row['id'] ?>" title="Detail Jadwal">
         <i class='bx bx-detail'></i>
     </button>
+    </button>
+    <button class="btn btn-sm btn-primary" 
+            title="Edit Jadwal"
+            onclick="editJadwal(<?= $row['id'] ?>, '<?= $row['tanggal'] ?>', '<?= $row['jam'] ?>', '<?= htmlspecialchars($row['nama_lembaga']) ?>', '<?= htmlspecialchars($row['pengisi']) ?>', '<?= $row['pendamping_id'] ?? '' ?>')">
+        <i class='bx bx-edit'></i>
+    </button>
     <button class="btn btn-sm btn-warning" 
-            onclick="editStatus(<?= $row['id'] ?>, '<?= $row['status'] ?>')">
+            onclick="editStatus(<?= $row['id'] ?>, '<?= $row['status'] ?>')" title="Update Status">
         <i class='bx bx-refresh'></i>
     </button>
     <button class="btn btn-sm btn-danger" 
-            onclick="confirmDelete(<?= $row['id'] ?>)">
+            onclick="confirmDelete(<?= $row['id'] ?>)" title="Hapus Jadwal">
         <i class='bx bx-trash'></i>
     </button>
     <a href="https://wa.me/<?= $row['no_wa'] ?>" 
        target="_blank" 
-       class="btn btn-sm btn-success">
+       class="btn btn-sm btn-success" title="Chat WA">
         <i class='bx bxl-whatsapp'></i>
     </a>
     <?php if($row['status'] == 'terlaksana'): ?>
@@ -320,8 +437,12 @@ if(isset($_SESSION['success'])): ?>
     <p><strong>Jumlah Santri:</strong> <?= $row['jumlah_santri'] ?></p>
     <p><strong>Penanggung Jawab:</strong> <?= $row['penanggung_jawab'] ?></p>
     <p><strong>No. WhatsApp:</strong> <?= $row['no_wa'] ?></p>
+    <?php if(!empty($row['share_loc'])): ?>
+        <p><strong>Lokasi:</strong> <a href="<?= htmlspecialchars($row['share_loc']) ?>" target="_blank" class="text-decoration-none"><i class='bx bx-map'></i> Buka Google Maps</a></p>
+    <?php endif; ?>
     <p><strong>Jadwal:</strong> <?= $hari_id[$hari] ?>, <?= date('d/m/Y', strtotime($row['tanggal'])) ?> <?= $row['jam'] ?></p>
     <p><strong>Pengisi:</strong> <?= $row['pengisi'] ?></p>
+    <p><strong>Pendamping:</strong> <?= $row['nama_pendamping'] ?? '-' ?></p>
     <p><strong>Status:</strong> <?= ucfirst($row['status']) ?></p>
     <p><strong>Frekuensi:</strong> 
         <?php
@@ -488,6 +609,91 @@ $(document).ready(function() {
     <script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
     
     <?php include 'jadwal_scripts.php'; ?>
+
+<!-- Modal Edit Jadwal -->
+<div class="modal fade" id="editJadwalModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Jadwal Safari</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="">
+                <div class="modal-body">
+                    <input type="hidden" name="id" id="edit_id">
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Lembaga</label>
+                        <input type="text" id="edit_lembaga" class="form-control" readonly disabled>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Tanggal</label>
+                            <input type="date" name="tanggal" id="edit_tanggal" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Jam</label>
+                            <input type="time" name="jam" id="edit_jam" class="form-control" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Pengisi</label>
+                        <select name="pengisi" id="edit_pengisi" class="form-select" required>
+                            <option value="">Pilih Pengisi</option>
+                            <?php 
+                            // Re-use pengisi query logic or just manual query here if needed, 
+                            // but best to just use the same query as modal_tambah_jadwal.php 
+                            // Since we can't easily include it inside this loop or function scope, let's query again or assume $conn is available.
+                            // The easiest way is to query here.
+                            $q_p = "SELECT * FROM pengisi WHERE status = 'aktif' ORDER BY nama ASC";
+                            $s_p = $conn->prepare($q_p);
+                            $s_p->execute();
+                            while($p = $s_p->fetch()) {
+                                echo "<option value='" . htmlspecialchars($p['nama']) . "'>" . htmlspecialchars($p['nama']) . "</option>";
+                            }
+                            ?>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Pendamping</label>
+                        <select name="pendamping_id" id="edit_pendamping" class="form-select">
+                            <option value="">Pilih Pendamping</option>
+                            <?php 
+                            $q_pd = "SELECT * FROM pendamping WHERE status = 'aktif' ORDER BY nama ASC";
+                            $s_pd = $conn->prepare($q_pd);
+                            $s_pd->execute();
+                            while($pd = $s_pd->fetch()) {
+                                echo "<option value='" . $pd['id'] . "'>" . htmlspecialchars($pd['nama']) . "</option>";
+                            }
+                            ?>
+                        </select>
+                    </div>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" name="update_jadwal" class="btn btn-primary">Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function editJadwal(id, tanggal, jam, lembaga, pengisi, pendamping_id) {
+    document.getElementById('edit_id').value = id;
+    document.getElementById('edit_tanggal').value = tanggal;
+    document.getElementById('edit_jam').value = jam;
+    document.getElementById('edit_lembaga').value = lembaga;
+    document.getElementById('edit_pengisi').value = pengisi;
+    document.getElementById('edit_pendamping').value = pendamping_id;
+    
+    new bootstrap.Modal(document.getElementById('editJadwalModal')).show();
+}
+</script>
     
     <!--// hapus-->
     <script>

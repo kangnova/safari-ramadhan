@@ -1,29 +1,14 @@
 <?php
-$host = 'localhost';
-$username = 'gnborid_safariramadhan2025';
-$password = 'gnborid_safariramadhan2025';
-$database = 'gnborid_safariramadhan2025';
+require_once 'koneksi.php';
 
-try {
-    // Buat koneksi PDO
-    $pdo = new PDO("mysql:host=$host;dbname=$database", $username, $password);
-    
-    // Set mode error PDO
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    
-    // Set default fetch mode array asosiatif
-    $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-    
-    // Pastikan koneksi menggunakan UTF-8
-    $pdo->exec("SET NAMES utf8");
-    
-} catch(PDOException $e) {
-    // Log error koneksi untuk troubleshooting
-    error_log("Koneksi database gagal: " . $e->getMessage());
-    
-    // Tampilkan pesan user-friendly (tidak menampilkan detail sensitif)
-    die("Maaf, terjadi masalah saat menghubungkan ke database. Silakan coba lagi nanti.");
-}
+// Gunakan variabel $conn dari koneksi.php dan alias ke $pdo agar kompatibel dengan kode yang ada
+$pdo = $conn;
+
+// Set default fetch mode array asosiatif (jika belum di set di koneksi.php)
+$pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+
+// Pastikan koneksi menggunakan UTF-8
+$pdo->exec("SET NAMES utf8");
 
 session_start();
 
@@ -529,51 +514,52 @@ $selected_payment = isset($_SESSION['selected_payment']) ? $_SESSION['selected_p
             <!-- Payment Methods Container -->
             <div class="payment-methods-container" id="paymentMethodsContainer">
                 <!-- Payment Methods Form -->
-                <form id="paymentForm" method="POST">
-                    <!-- Transfer Bank -->
-                    <?php
-// Kode ini sebaiknya di tempatkan di bagian awal file, sebelum HTML
-// Ambil data logo bank dari database
-try {
-    $stmt = $pdo->query("SELECT * FROM logo_bank ORDER BY nama_bank ASC");
-    $bank_logos = $stmt->fetchAll();
+<!-- Transfer Bank -->
+    <?php
+    // Ambil data logo bank dari database
+    try {
+        // Ambil semua metode pembayaran yang aktif, urutkan berdasarkan urutan dan nama
+        $stmt = $pdo->query("SELECT * FROM logo_bank WHERE is_active = 1 ORDER BY urutan ASC, nama_bank ASC");
+        $payment_methods = $stmt->fetchAll();
 
-    // Filter untuk memisahkan bank dan QRIS
-    $banks = [];
-    $qris = [];
-    
-    foreach ($bank_logos as $logo) {
-        if (strtolower($logo['nama_bank']) === 'qris') {
-            $qris[] = $logo;
-        } else {
-            $banks[] = $logo;
+        // Filter berdasarkan kategori
+        $banks = [];
+        $ewallets = [];
+        $qris = [];
+        
+        foreach ($payment_methods as $method) {
+            if ($method['kategori'] == 'bank') {
+                $banks[] = $method;
+            } elseif ($method['kategori'] == 'ewallet') {
+                $ewallets[] = $method;
+            } elseif ($method['kategori'] == 'qris') {
+                $qris[] = $method;
+            } else {
+                // Fallback untuk data lama atau kategori tak dikenal, anggap bank
+                if (strtolower($method['nama_bank']) === 'qris') {
+                    $qris[] = $method;
+                } else {
+                    $banks[] = $method;
+                }
+            }
         }
+    } catch (PDOException $e) {
+        error_log("Error fetching payment methods: " . $e->getMessage());
+        $banks = [];
+        $ewallets = [];
+        $qris = [];
     }
-} catch (PDOException $e) {
-    error_log("Error fetching logo data: " . $e->getMessage());
-    $banks = [];
-    $qris = [];
-}
+    ?>
 
-// Data rekening (untuk contoh)
-$rekening_data = [
-    'bsi' => '9191919235',
-    'mandiri' => '1380015275477',
-    'jateng' => '2138041240'
-];
-?>
-
-<!-- REKENING -->
-<div class="payment-group">
-    <div class="payment-group-title">REKENING</div>
-    
+    <!-- REKENING BANK -->
     <?php if (count($banks) > 0): ?>
+    <div class="payment-group">
+        <div class="payment-group-title">TRANSFER BANK</div>
+        
         <?php foreach ($banks as $bank): 
-            // Tentukan kode bank (untuk javascript)
-            $bank_code = strtolower(preg_replace('/\s+/', '', $bank['nama_bank']));
-            
-            // Tentukan nomor rekening jika tersedia, jika tidak gunakan string kosong
-            $rekening = isset($rekening_data[$bank_code]) ? $rekening_data[$bank_code] : '';
+            $bank_code = 'method_' . $bank['id']; 
+            $rekening = $bank['nomor_rekening'];
+            // Jika nomor rekening kosong di db, coba gunakan data hardcode lama sebagai fallback (opsional)
         ?>
         <div class="payment-option <?php echo $selected_payment == $bank_code ? 'selected' : ''; ?>" 
              onclick="selectPaymentMethod('<?php echo $bank_code; ?>', this)">
@@ -581,432 +567,162 @@ $rekening_data = [
             <div class="bank-info">
                 <div class="payment-option-title"><?php echo htmlspecialchars($bank['nama_bank']); ?></div>
                 <?php if ($rekening): ?>
-                <div class="payment-option-description">💳 <?php echo htmlspecialchars($bank['nama_bank']); ?>: <?php echo $rekening; ?></div>
+                <div class="payment-option-description">💳 No. Rek: <?php echo htmlspecialchars($rekening); ?></div>
                 <?php else: ?>
                 <div class="payment-option-description">Silahkan pilih untuk detail rekening</div>
                 <?php endif; ?>
             </div>
         </div>
         <?php endforeach; ?>
-    <?php else: ?>
-        <!-- Fallback jika tidak ada data bank -->
-        <div class="payment-option <?php echo $selected_payment == 'bsi' ? 'selected' : ''; ?>" 
-             onclick="selectPaymentMethod('bsi', this)">
-            <img src="img/logo-bsi.png" alt="BSI Logo" class="bank-logo">
-            <div class="bank-info">
-                <div class="payment-option-title">BSI</div>
-                <div class="payment-option-description">💳 BSI: 9191919235</div>
-            </div>
-        </div>
-        
-        <div class="payment-option <?php echo $selected_payment == 'mandiri' ? 'selected' : ''; ?>" 
-             onclick="selectPaymentMethod('mandiri', this)">
-            <img src="img/logo-mandiri.png" alt="Mandiri Logo" class="bank-logo">
-            <div class="bank-info">
-                <div class="payment-option-title">MANDIRI</div>
-                <div class="payment-option-description">💳 MANDIRI: 1380015275477</div>
-            </div>
-        </div>
+    </div>
     <?php endif; ?>
-</div>
 
-<!-- QRIS -->
-<div class="payment-group">
-    <?php if (count($qris) > 0): ?>
-        <?php foreach ($qris as $qris_item): ?>
-        <div class="payment-option <?php echo $selected_payment == 'qris' ? 'selected' : ''; ?>" 
-             onclick="selectPaymentMethod('qris', this)">
-            <img src="<?php echo $qris_item['gambar']; ?>" alt="QRIS Logo" class="bank-logo">
+    <!-- E-WALLET -->
+    <?php if (count($ewallets) > 0): ?>
+    <div class="payment-group">
+        <div class="payment-group-title">E-WALLET</div>
+        
+        <?php foreach ($ewallets as $wallet): 
+            $wallet_code = 'method_' . $wallet['id']; 
+            $nomor = $wallet['nomor_rekening'];
+        ?>
+        <div class="payment-option <?php echo $selected_payment == $wallet_code ? 'selected' : ''; ?>" 
+             onclick="selectPaymentMethod('<?php echo $wallet_code; ?>', this)">
+            <img src="<?php echo $wallet['gambar']; ?>" alt="<?php echo htmlspecialchars($wallet['nama_bank']); ?> Logo" class="bank-logo">
             <div class="bank-info">
-                <div class="payment-option-title">QRIS</div>
-                <div class="payment-option-description">Untuk semua Bank dan eWallet di Indonesia yang mendukung QRIS</div>
+                <div class="payment-option-title"><?php echo htmlspecialchars($wallet['nama_bank']); ?></div>
+                <?php if ($nomor): ?>
+                <div class="payment-option-description">📱 No: <?php echo htmlspecialchars($nomor); ?></div>
+                <?php else: ?>
+                <div class="payment-option-description">Silahkan pilih untuk instruksi pembayaran</div>
+                <?php endif; ?>
             </div>
         </div>
         <?php endforeach; ?>
-    <?php else: ?>
-        <!-- Jika QRIS tidak ada di database, tampilkan default -->
-        <div class="payment-option <?php echo $selected_payment == 'qris' ? 'selected' : ''; ?>" 
-             onclick="selectPaymentMethod('qris', this)">
-            <img src="img/logo-qris.png" alt="QRIS Logo" class="bank-logo">
+    </div>
+    <?php endif; ?>
+
+    <!-- QRIS -->
+    <?php if (count($qris) > 0): ?>
+    <div class="payment-group">
+        <div class="payment-group-title">QRIS</div>
+        <?php foreach ($qris as $qris_item): 
+             $qris_code = 'method_' . $qris_item['id'];
+        ?>
+        <div class="payment-option <?php echo $selected_payment == $qris_code ? 'selected' : ''; ?>" 
+             onclick="selectPaymentMethod('<?php echo $qris_code; ?>', this)">
+            <img src="<?php echo $qris_item['gambar']; ?>" alt="QRIS Logo" class="bank-logo">
             <div class="bank-info">
                 <div class="payment-option-title">QRIS</div>
-                <div class="payment-option-description">Untuk semua Bank dan eWallet di Indonesia yang mendukung QRIS</div>
+                <div class="payment-option-description">Scan QR code menggunakan e-wallet pilihan Anda</div>
             </div>
         </div>
+        <?php endforeach; ?>
+    </div>
     <?php endif; ?>
+    
+    <!-- Hidden input for selected payment method -->
+    <input type="hidden" name="metode_pembayaran" id="metode_pembayaran" value="<?php echo $selected_payment; ?>">
+</form>
 </div>
-                    
-                    <!-- Hidden input for selected payment method -->
-                    <input type="hidden" name="metode_pembayaran" id="metode_pembayaran" value="<?php echo $selected_payment; ?>">
-                </form>
-            </div>
-            
-            <!-- BSI Transfer Payment Details -->
-            <div class="payment-details" id="bsiPaymentDetails">
-                <?php
-    // Ambil data logo BSI dari array yang sudah difilter sebelumnya
-    $bsi_logo = '';
-    foreach ($banks as $bank) {
-        if (strtolower(preg_replace('/\s+/', '', $bank['nama_bank'])) === 'bsi') {
-            $bsi_logo = '' . $bank['gambar'];
-            break;
-        }
-    }
-    // Gunakan logo default jika tidak ditemukan di database
-    if (empty($bsi_logo)) {
-        $bsi_logo = "img/logo-bsi.png";
-    }
-    ?>
+
+<!-- Payment Details Sections (Dynamic) -->
+<?php 
+// Gabungkan semua metode untuk loop detail section
+$all_methods = array_merge($banks, $ewallets, $qris);
+
+foreach ($all_methods as $method): 
+    $method_code = 'method_' . $method['id'];
+    $is_qris = ($method['kategori'] == 'qris' || strtolower($method['nama_bank']) === 'qris');
+?>
+<div class="payment-details" id="<?php echo $method_code; ?>PaymentDetails">
     <div class="d-flex align-items-center mb-4">
-        <img src="<?php echo $bsi_logo; ?>" alt="BSI Logo" class="bank-logo me-3" style="width: 50px; height: 50px;">
+        <img src="<?php echo $method['gambar']; ?>" alt="<?php echo htmlspecialchars($method['nama_bank']); ?> Logo" class="bank-logo me-3" style="width: 50px; height: 50px;">
         <div>
-            <h4 class="mb-1">BSI</h4>
-            <h5 class="text-secondary">Transfer Manual</h5>
+            <h4 class="mb-1"><?php echo htmlspecialchars($method['nama_bank']); ?></h4>
+            <h5 class="text-secondary"><?php echo $is_qris ? 'Scan QR Code' : 'Transfer Manual'; ?></h5>
         </div>
     </div>
-                
-                <div class="detail-section mt-4 p-3 bg-white rounded shadow-sm">
-                    <div class="detail-title">Nomor Rekening</div>
-                    <div class="d-flex align-items-center">
-                        <div class="me-2 p-2 bg-light rounded"><strong>9191919235</strong></div>
-                        <button class="copy-button" onclick="copyToClipboard('9191919235')">
-                            <i class="fas fa-copy me-1"></i> Salin
-                        </button>
-                    </div>
-                </div>
-                
-                <div class="detail-section p-3 bg-white rounded shadow-sm">
-                    <div class="detail-title">Jumlah</div>
-                    <div class="d-flex align-items-center">
-                        <div class="me-2 p-2 bg-light rounded"><strong><?php echo $nominal_unique_display; ?></strong></div>
-                        <button class="copy-button" onclick="copyToClipboard('<?php echo $nominal_with_unique; ?>')">
-                            <i class="fas fa-copy me-1"></i> Salin
-                        </button>
-                    </div>
-                </div>
-                
-                <div class="detail-section p-3 bg-white rounded shadow-sm">
-                    <div class="detail-title">Perhatian</div>
-                    <div class="alert alert-warning rounded">
-                        <i class="fas fa-exclamation-circle me-2"></i>
-                        Silakan transfer sesuai nominal yang tercantum di atas. Tiga digit kode unik akan didonasikan untuk campaign terkait.
-                    </div>
-                </div>
-                
-                <div class="detail-section p-3 bg-white rounded shadow-sm">
-                    <div class="detail-title">Detail Transaksi</div>
-                    <div class="row mt-2">
-                        <div class="col-4">Nama Program</div>
-                        <div class="col-8 fw-bold">Ifthar Ramadhan</div>
-                    </div>
-                </div>
-                
-                <!-- Upload Bukti Transfer -->
-                <div class="upload-section">
-                    <form method="POST" enctype="multipart/form-data">
-                        <div class="detail-title mb-3">
-                            <i class="fas fa-upload me-2"></i> Upload Bukti Transfer
-                        </div>
-                        <div class="mb-3">
-                            <input type="file" class="form-control border-secondary" name="bukti_transfer" accept="image/jpeg,image/png,application/pdf" required>
-                        </div>
-                        <button type="submit" name="submit_bukti" class="btn btn-primary w-100">
-                            <i class="fas fa-paper-plane me-2"></i> Upload Bukti Transfer
-                        </button>
-                    </form>
-                </div>
-                
-                <div class="detail-section mt-4 p-3 bg-white rounded shadow-sm">
-                    <div class="detail-title">Bantuan</div>
-                    <div>
-                        <a href="https://wa.me/6285600030005" class="btn btn-outline-success btn-sm">
-                            <i class="fab fa-whatsapp me-1"></i> Whatsapp
-                        </a>
-                    </div>
-                </div>
-                
-                <div class="detail-section p-3 bg-white rounded shadow-sm">
-                    <div class="detail-title">Cara Pembayaran</div>
-                    <div class="mt-2">
-                        <div class="bg-light p-2 rounded mb-2">Transfer Manual</div>
-                        <ol class="steps-list">
-                            <li>Pilih Transfer pada menu utama bank pilihan Anda. Transfer bisa dilakukan melalui ATM, SMS Banking, atau Internet Banking.</li>
-                            <li>Masukkan nomor rekening di atas. Kemudian, masukkan nominal sesuai dengan jumlah yang tertera pada nominal diatas.</li>
-                        </ol>
-                    </div>
-                </div>
+    
+    <?php if (!$is_qris): ?>
+        <!-- Tampilan untuk Bank/E-Wallet -->
+        <div class="detail-section mt-4 p-3 bg-white rounded shadow-sm">
+            <div class="detail-title">Nomor Rekening / Tujuan</div>
+            <div class="d-flex align-items-center">
+                <div class="me-2 p-2 bg-light rounded"><strong><?php echo htmlspecialchars($method['nomor_rekening']); ?></strong></div>
+                <button class="copy-button" onclick="copyToClipboard('<?php echo htmlspecialchars($method['nomor_rekening']); ?>')">
+                    <i class="fas fa-copy me-1"></i> Salin
+                </button>
             </div>
-            <!-- Mandiri Transfer Payment Details -->
-            <div class="payment-details" id="mandiriPaymentDetails">
-                <div class="d-flex align-items-center mb-4">
-    <?php
-    // Ambil data logo Mandiri dari array yang sudah difilter sebelumnya
-    $mandiri_logo = '';
-    foreach ($banks as $bank) {
-        if (strtolower(preg_replace('/\s+/', '', $bank['nama_bank'])) === 'mandiri') {
-            $mandiri_logo = '' . $bank['gambar'];
-            break;
-        }
-    }
-    // Gunakan logo default jika tidak ditemukan di database
-    if (empty($mandiri_logo)) {
-        $mandiri_logo = "img/logo-mandiri.png";
-    }
-    ?>
-    <img src="<?php echo $mandiri_logo; ?>" alt="Mandiri Logo" class="bank-logo me-3" style="width: 50px; height: 50px;">
-    <div>
-        <h4 class="mb-1">MANDIRI</h4>
-        <h5 class="text-secondary">Transfer Manual</h5>
-    </div>
-</div>
-                
-                <div class="detail-section mt-4 p-3 bg-white rounded shadow-sm">
-                    <div class="detail-title">Nomor Rekening</div>
-                    <div class="d-flex align-items-center">
-                        <div class="me-2 p-2 bg-light rounded"><strong>1380015275477</strong></div>
-                        <button class="copy-button" onclick="copyToClipboard('1380015275477')">
-                            <i class="fas fa-copy me-1"></i> Salin
-                        </button>
-                    </div>
-                </div>
-                
-                <div class="detail-section p-3 bg-white rounded shadow-sm">
-                    <div class="detail-title">Jumlah</div>
-                    <div class="d-flex align-items-center">
-                        <div class="me-2 p-2 bg-light rounded"><strong><?php echo $nominal_unique_display; ?></strong></div>
-                        <button class="copy-button" onclick="copyToClipboard('<?php echo $nominal_with_unique; ?>')">
-                            <i class="fas fa-copy me-1"></i> Salin
-                        </button>
-                    </div>
-                </div>
-                
-                <div class="detail-section p-3 bg-white rounded shadow-sm">
-                    <div class="detail-title">Perhatian</div>
-                    <div class="alert alert-warning rounded">
-                        <i class="fas fa-exclamation-circle me-2"></i>
-                        Silakan transfer sesuai nominal yang tercantum di atas. Tiga digit kode unik akan didonasikan untuk campaign terkait.
-                    </div>
-                </div>
-                
-                <div class="detail-section p-3 bg-white rounded shadow-sm">
-                    <div class="detail-title">Detail Transaksi</div>
-                    <div class="row mt-2">
-                        <div class="col-4">Nama Program</div>
-                        <div class="col-8 fw-bold">Ifthar Ramadhan</div>
-                    </div>
-                </div>
-                
-                <!-- Upload Bukti Transfer -->
-                <div class="upload-section">
-                    <form method="POST" enctype="multipart/form-data">
-                        <div class="detail-title mb-3">
-                            <i class="fas fa-upload me-2"></i> Upload Bukti Transfer
-                        </div>
-                        <div class="mb-3">
-                            <input type="file" class="form-control border-secondary" name="bukti_transfer" accept="image/jpeg,image/png,application/pdf" required>
-                        </div>
-                        <button type="submit" name="submit_bukti" class="btn btn-primary w-100">
-                            <i class="fas fa-paper-plane me-2"></i> Upload Bukti Transfer
-                        </button>
-                    </form>
-                </div>
-                
-                <div class="detail-section mt-4 p-3 bg-white rounded shadow-sm">
-                    <div class="detail-title">Bantuan</div>
-                    <div>
-                        <a href="https://wa.me/6285600030005" class="btn btn-outline-success btn-sm">
-                            <i class="fab fa-whatsapp me-1"></i> Whatsapp
-                        </a>
-                    </div>
-                </div>
-                
-                <div class="detail-section p-3 bg-white rounded shadow-sm">
-                    <div class="detail-title">Cara Pembayaran</div>
-                    <div class="mt-2">
-                        <div class="bg-light p-2 rounded mb-2">Transfer Manual</div>
-                        <ol class="steps-list">
-                            <li>Pilih Transfer pada menu utama bank pilihan Anda. Transfer bisa dilakukan melalui ATM, SMS Banking, atau Internet Banking.</li>
-                            <li>Masukkan nomor rekening di atas. Kemudian, masukkan nominal sesuai dengan jumlah yang tertera pada nominal diatas.</li>
-                        </ol>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Bank Jateng Transfer Payment Details -->
-            <div class="payment-details" id="jatengPaymentDetails">
-                <div class="d-flex align-items-center mb-4">
-    <?php
-    // Ambil data logo Bank Jateng dari array yang sudah difilter sebelumnya
-    $jateng_logo = '';
-    foreach ($banks as $bank) {
-        if (strtolower(preg_replace('/\s+/', '', $bank['nama_bank'])) === 'bankjateng' || 
-            strtolower(preg_replace('/\s+/', '', $bank['nama_bank'])) === 'jateng') {
-            $jateng_logo = '' . $bank['gambar'];
-            break;
-        }
-    }
-    // Gunakan logo default jika tidak ditemukan di database
-    if (empty($jateng_logo)) {
-        $jateng_logo = "img/logo-jateng.png";
-    }
-    ?>
-    <img src="<?php echo $jateng_logo; ?>" alt="Bank Jateng Logo" class="bank-logo me-3" style="width: 50px; height: 50px;">
-    <div>
-        <h4 class="mb-1">BANK JATENG</h4>
-        <h5 class="text-secondary">Transfer Manual</h5>
-    </div>
-</div>
-                
-                <div class="detail-section mt-4 p-3 bg-white rounded shadow-sm">
-                    <div class="detail-title">Nomor Rekening</div>
-                    <div class="d-flex align-items-center">
-                        <div class="me-2 p-2 bg-light rounded"><strong>2138041240</strong></div>
-                        <button class="copy-button" onclick="copyToClipboard('2138041240')">
-                            <i class="fas fa-copy me-1"></i> Salin
-                        </button>
-                    </div>
-                </div>
-                
-                <div class="detail-section p-3 bg-white rounded shadow-sm">
-                    <div class="detail-title">Jumlah</div>
-                    <div class="d-flex align-items-center">
-                        <div class="me-2 p-2 bg-light rounded"><strong><?php echo $nominal_unique_display; ?></strong></div>
-                        <button class="copy-button" onclick="copyToClipboard('<?php echo $nominal_with_unique; ?>')">
-                            <i class="fas fa-copy me-1"></i> Salin
-                        </button>
-                    </div>
-                </div>
-                
-                <div class="detail-section p-3 bg-white rounded shadow-sm">
-                    <div class="detail-title">Perhatian</div>
-                    <div class="alert alert-warning rounded">
-                        <i class="fas fa-exclamation-circle me-2"></i>
-                        Silakan transfer sesuai nominal yang tercantum di atas. Tiga digit kode unik akan didonasikan untuk campaign terkait.
-                    </div>
-                </div>
-                
-                <div class="detail-section p-3 bg-white rounded shadow-sm">
-                    <div class="detail-title">Detail Transaksi</div>
-                    <div class="row mt-2">
-                        <div class="col-4">Nama Program</div>
-                        <div class="col-8 fw-bold">Ifthar Ramadhan</div>
-                    </div>
-                </div>
-                
-                <!-- Upload Bukti Transfer -->
-                <div class="upload-section">
-                    <form method="POST" enctype="multipart/form-data">
-                        <div class="detail-title mb-3">
-                            <i class="fas fa-upload me-2"></i> Upload Bukti Transfer
-                        </div>
-                        <div class="mb-3">
-                            <input type="file" class="form-control border-secondary" name="bukti_transfer" accept="image/jpeg,image/png,application/pdf" required>
-                        </div>
-                        <button type="submit" name="submit_bukti" class="btn btn-primary w-100">
-                            <i class="fas fa-paper-plane me-2"></i> Upload Bukti Transfer
-                        </button>
-                    </form>
-                </div>
-                
-                <div class="detail-section mt-4 p-3 bg-white rounded shadow-sm">
-                    <div class="detail-title">Bantuan</div>
-                    <div>
-                        <a href="https://wa.me/6285600030005" class="btn btn-outline-success btn-sm">
-                            <i class="fab fa-whatsapp me-1"></i> Whatsapp
-                        </a>
-                    </div>
-                </div>
-                
-                <div class="detail-section p-3 bg-white rounded shadow-sm">
-                    <div class="detail-title">Cara Pembayaran</div>
-                    <div class="mt-2">
-                        <div class="bg-light p-2 rounded mb-2">Transfer Manual</div>
-                        <ol class="steps-list">
-                            <li>Pilih Transfer pada menu utama bank pilihan Anda. Transfer bisa dilakukan melalui ATM, SMS Banking, atau Internet Banking.</li>
-                            <li>Masukkan nomor rekening di atas. Kemudian, masukkan nominal sesuai dengan jumlah yang tertera pada nominal diatas.</li>
-                        </ol>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- QRIS Payment Details -->
-            <div class="payment-details" id="qrisPaymentDetails">
-                <div class="d-flex align-items-center mb-4">
-                    <img src="<?php echo $qris_item['gambar']; ?>" alt="QRIS Logo" class="bank-logo me-3" style="width: 50px; height: 50px;">
-                    <div>
-                        <h4 class="mb-1">QRIS</h4>
-                        <h5 class="text-secondary">Untuk semua Bank dan eWallet di Indonesia yang mendukung QRIS</h5>
-                    </div>
-                </div>
-                
-                <div class="detail-section mt-4 p-3 bg-white rounded shadow-sm">
-                    <div class="detail-title">Jumlah</div>
-                    <div class="p-2 bg-light rounded text-center mt-2">
-                        <strong class="fs-5"><?php echo $nominal_display; ?></strong>
-                    </div>
-                </div>
-                
-                <div class="text-center mt-4">
-                    <div class="payment-qr shadow">
-                        <img src="img/qris/qris.jpg" alt="QRIS Payment Code" class="img-fluid">
-                    </div>
-                    <div class="mt-3">
-                        <a href="img/qris" download="qris.jpg" class="btn btn-outline-primary btn-sm">
-                            <i class="fas fa-download me-1"></i> Download QRIS
-                        </a>
-                    </div>
-                </div>
-                
-                <div class="detail-section mt-4 p-3 bg-white rounded shadow-sm">
-                    <div class="detail-title">Detail Transaksi</div>
-                    <div class="row mt-2">
-                        <div class="col-4">Nama Program</div>
-                        <div class="col-8 fw-bold">Ifthar Ramadhan</div>
-                    </div>
-                </div>
-                <div class="detail-section p-3 bg-white rounded shadow-sm">
-                    <div class="detail-title">Cara Pembayaran</div>
-                    <div class="mt-3">
-                        <div class="d-flex flex-wrap gap-2 mb-3">
-                            <button class="btn btn-outline-secondary btn-sm" style="background-color: rgba(64, 224, 208, 0.1);">
-                                <img src="img/logo-gopay.png" alt="Gopay" width="20" class="me-1"> Gopay
-                            </button>
-                            <button class="btn btn-outline-secondary btn-sm" style="background-color: rgba(64, 224, 208, 0.1);">
-                                <img src="img/logo-shopee.png" alt="Shopee" width="20" class="me-1"> Shopee
-                            </button>
-                            <button class="btn btn-outline-secondary btn-sm" style="background-color: rgba(64, 224, 208, 0.1);">
-                                <img src="img/logo-dana.png" alt="Dana" width="20" class="me-1"> Dana
-                            </button>
-                            <button class="btn btn-outline-secondary btn-sm" style="background-color: rgba(64, 224, 208, 0.1);">
-                                <img src="img/logo-ovo.png" alt="OVO" width="20" class="me-1"> OVO
-                            </button>
-                            <button class="btn btn-outline-secondary btn-sm" style="background-color: rgba(64, 224, 208, 0.1);">
-                                <img src="img/logo-bca.png" alt="BCA" width="20" class="me-1"> BCA
-                            </button>
-                        </div>
-                        
-                        <div class="card border-0 shadow-sm mb-3">
-                            <div class="card-header bg-light">
-                                <strong><i class="fas fa-info-circle me-2"></i> Langkah-langkah Pembayaran</strong>
-                            </div>
-                            <div class="card-body">
-                                <ol class="steps-list">
-                                    <li>Buka aplikasi e-wallet atau m-banking pilihan Anda</li>
-                                    <li>Pilih menu Scan QRIS atau Scan QR</li>
-                                    <li>Scan kode QR di atas atau download terlebih dahulu</li>
-                                    <li>Masukkan nominal sesuai jumlah donasi</li>
-                                    <li>Konfirmasi dan selesaikan pembayaran</li>
-                                </ol>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <?php if (!empty($method['atas_nama'])): ?>
+            <div class="mt-2 text-muted small">A.N: <?php echo htmlspecialchars($method['atas_nama']); ?></div>
+            <?php endif; ?>
+        </div>
+        
+        <div class="detail-section p-3 bg-white rounded shadow-sm">
+            <div class="detail-title">Jumlah Transfer</div>
+            <div class="d-flex align-items-center">
+                <div class="me-2 p-2 bg-light rounded"><strong><?php echo $nominal_unique_display; ?></strong></div>
+                <button class="copy-button" onclick="copyToClipboard('<?php echo $nominal_with_unique; ?>')">
+                    <i class="fas fa-copy me-1"></i> Salin
+                </button>
             </div>
         </div>
 
+    <?php else: ?>
+        <!-- Tampilan untuk QRIS -->
+        <div class="payment-qr">
+            <!-- Tampilkan gambar QRIS yang diupload sebagai logo/gambar bank di database -->
+            <!-- Jika gambar terlalu kecil (icon), mungkin perlu handling khusus, tapi asumsi user upload gambar QR Code -->
+            <img src="<?php echo $method['gambar']; ?>" alt="QRIS Code">
+        </div>
+        
+        <div class="detail-section p-3 bg-white rounded shadow-sm text-center">
+            <div class="detail-title">Total Pembayaran</div>
+            <div class="h4 text-primary"><?php echo $nominal_unique_display; ?></div>
+        </div>
+    <?php endif; ?>
+    
+    <div class="detail-section p-3 bg-white rounded shadow-sm">
+        <div class="detail-title">Perhatian</div>
+        <div class="alert alert-warning rounded">
+            <i class="fas fa-exclamation-circle me-2"></i>
+            Silakan transfer sesuai nominal yang tercantum (termasuk kode unik) agar verifikasi dapat berjalan otomatis.
+        </div>
+    </div>
+    
+    <!-- Upload Bukti Transfer -->
+    <div class="upload-section">
+        <form method="POST" enctype="multipart/form-data">
+            <div class="detail-title mb-3">
+                <i class="fas fa-upload me-2"></i> Upload Bukti Transfer
+            </div>
+            <div class="mb-3">
+                <input type="file" class="form-control border-secondary" name="bukti_transfer" accept="image/jpeg,image/png,application/pdf" required>
+            </div>
+            <button type="submit" name="submit_bukti" class="btn btn-primary w-100">
+                <i class="fas fa-paper-plane me-2"></i> Kirim Bukti Transfer
+            </button>
+        </form>
+    </div>
+    
+    <div class="detail-section mt-4 p-3 bg-white rounded shadow-sm">
+        <div class="detail-title">Bantuan</div>
+        <div>
+            <a href="https://wa.me/6281234567890" class="btn btn-outline-success btn-sm">
+                <i class="fab fa-whatsapp me-1"></i> Whatsapp Admin
+            </a>
+        </div>
+    </div>
+</div>
+<?php endforeach; ?>
+            
+            
+</div>
+        
         <!-- Fixed Bottom -->
         <div class="fixed-bottom" id="bottomActionBar">
-            <button type="submit" form="paymentForm" class="btn btn-success w-100 shadow" id="payBtn" 
+            <button type="button" class="btn btn-success w-100 shadow" id="payBtn" 
                     <?php echo empty($selected_payment) ? 'disabled' : ''; ?>>
                 <i class="fas fa-check-circle me-2"></i> Pilih Metode Pembayaran
             </button>
@@ -1051,17 +767,14 @@ $rekening_data = [
             });
             
             // Tampilkan detail sesuai metode
-            if (method === 'bsi') {
-                document.getElementById('bsiPaymentDetails').style.display = 'block';
-            } else if (method === 'mandiri') {
-                document.getElementById('mandiriPaymentDetails').style.display = 'block';
-            } else if (method === 'jateng') {
-                document.getElementById('jatengPaymentDetails').style.display = 'block';
-            } else if (method === 'qris') {
-                document.getElementById('qrisPaymentDetails').style.display = 'block';
+            // ID detail sekarang menggunakan format: method_{id}PaymentDetails
+            const detailId = method + 'PaymentDetails';
+            const detailElement = document.getElementById(detailId);
+            
+            if (detailElement) {
+                detailElement.style.display = 'block';
             } else {
-                // Untuk metode lain, defaultnya tampilkan BSI (sebagai contoh)
-                document.getElementById('bsiPaymentDetails').style.display = 'block';
+                console.error('Detail pembayaran tidak ditemukan untuk: ' + method);
             }
         }
         
@@ -1086,6 +799,18 @@ $rekening_data = [
                 alert('Teks berhasil disalin');
             }).catch(err => {
                 console.error('Error menyalin teks: ', err);
+                // Fallback untuk browser yang tidak support clipboard API
+                const textArea = document.createElement("textarea");
+                textArea.value = text;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    alert('Teks berhasil disalin');
+                } catch (err) {
+                    console.error('Fallback clipboard error:', err);
+                }
+                document.body.removeChild(textArea);
             });
         }
         
@@ -1097,27 +822,50 @@ $rekening_data = [
         <?php endif; ?>
         
         // Event listener untuk form submit
-        document.getElementById('paymentForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const method = document.getElementById('metode_pembayaran').value;
-            
-            // Kirim AJAX request untuk update database
-            fetch(window.location.href, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: 'metode_pembayaran=' + method
-            }).then(response => {
-                // Tampilkan detail pembayaran
-                showPaymentDetails(method);
-            }).catch(error => {
-                console.error('Error:', error);
-                // Tampilkan detail pembayaran meskipun error
-                showPaymentDetails(method);
-            });
+        // Event listener untuk tombol bayar
+        document.addEventListener('DOMContentLoaded', function() {
+            const btn = document.getElementById('payBtn');
+            if (btn) {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    const methodInput = document.getElementById('metode_pembayaran');
+                    const method = methodInput ? methodInput.value : '';
+                    
+                    if (!method) {
+                        alert('Silakan pilih metode pembayaran terlebih dahulu.');
+                        return;
+                    }
+                    
+                    // Show loading state
+                    const originalText = btn.innerHTML;
+                    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
+                    btn.disabled = true;
+                    
+                    // Kirim AJAX request untuk update database
+                    fetch(window.location.href, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: 'metode_pembayaran=' + encodeURIComponent(method)
+                    }).then(response => {
+                        // Tampilkan detail pembayaran
+                        showPaymentDetails(method);
+                    }).catch(error => {
+                        console.error('Error:', error);
+                        alert('Terjadi kesalahan koneksi: ' + error);
+                        // Tampilkan detail pembayaran meskipun error (fallback agar user tetap bisa transfer)
+                        showPaymentDetails(method);
+                    }).finally(() => {
+                        // Restore button text
+                        btn.innerHTML = originalText;
+                    });
+                });
+            } else {
+                console.error('Tombol payBtn tidak ditemukan');
+            }
         });
     </script>
 </body>

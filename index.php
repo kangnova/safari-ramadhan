@@ -1,9 +1,12 @@
 <?php
+session_start();
 require_once 'koneksi.php';
 
 require_once 'hit_counter.php';
 
 // Ambil data pengisi yang aktif
+$tahun_masehi = date('Y');
+$tahun_hijriyah = floor(($tahun_masehi - 621) * 1.03);
 try {
     $query = "SELECT * FROM pengisi WHERE status = 'aktif' ORDER BY nama ASC";
     $stmt = $conn->prepare($query);
@@ -24,6 +27,21 @@ try {
 } catch(PDOException $e) {
     $error = "Error: " . $e->getMessage();
 }
+
+// Fetch Program Status
+$stmtS = $conn->prepare("SELECT setting_value FROM settings WHERE setting_key = 'safari_program_status'");
+$stmtS->execute();
+$stmtS->execute();
+$programStatus = $stmtS->fetchColumn() ?: 'active';
+
+// Admin Exception: Admin always sees active site
+if (isset($_SESSION['authenticated']) && $_SESSION['authenticated'] === true) {
+    $programStatus = 'active';
+}
+
+$stmtM = $conn->prepare("SELECT setting_value FROM settings WHERE setting_key = 'safari_program_ended_message'");
+$stmtM->execute();
+$programEndedMessage = $stmtM->fetchColumn() ?: '';
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -31,21 +49,21 @@ try {
     <!-- Meta Tags -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="Safari Ramadhan 1446 H/2025 merupakan program dakwah Yayasan Guru Ngaji Berdaya bekerjasama dengan para pengkisah di berbagai TPQ Kota Klaten untuk memberikan pendidikan melalui kisah-kisah inspiratif.">
-<meta property="og:title" content="Safari Ramadhan 1446 H/2025">
-<meta property="og:description" content="Safari Ramadhan adalah program dakwah rutin Yayasan Guru Ngaji Berdaya bekerjasama dengan para pengkisah untuk menghadirkan kajian dan motivasi di TPQ Kota Klaten selama bulan Ramadhan (1-26 Maret 2025). Program ini memberikan pendidikan melalui kisah-kisah inspiratif kepada santri TPQ.">
+<meta name="description" content="Safari Ramadhan <?= $tahun_hijriyah ?> H/<?= $tahun_masehi ?> merupakan program dakwah Yayasan Guru Ngaji Berdaya bekerjasama dengan para pengkisah di berbagai TPQ Kota Klaten untuk memberikan pendidikan melalui kisah-kisah inspiratif.">
+<meta property="og:title" content="Safari Ramadhan <?= $tahun_hijriyah ?> H/<?= $tahun_masehi ?>">
+<meta property="og:description" content="Safari Ramadhan adalah program dakwah rutin Yayasan Guru Ngaji Berdaya bekerjasama dengan para pengkisah untuk menghadirkan kajian dan motivasi di TPQ Kota Klaten selama bulan Ramadhan (1-26 Maret <?= $tahun_masehi ?>). Program ini memberikan pendidikan melalui kisah-kisah inspiratif kepada santri TPQ.">
 <meta property="og:image" content="https://gnb.or.id/safariramadhan/img/img1.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:type" content="image/jpeg">
 <meta property="og:url" content="https://gnb.or.id/safariramadhan/">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Safari Ramadhan 1446 H/2025">
-<meta name="twitter:description" content="Safari Ramadhan adalah program dakwah rutin Yayasan Guru Ngaji Berdaya bekerjasama dengan para pengkisah untuk menghadirkan kajian dan motivasi di TPQ Kota Klaten selama bulan Ramadhan (1-26 Maret 2025). Program ini memberikan pendidikan melalui kisah-kisah inspiratif kepada santri TPQ.">
+<meta name="twitter:title" content="Safari Ramadhan <?= $tahun_hijriyah ?> H/<?= $tahun_masehi ?>">
+<meta name="twitter:description" content="Safari Ramadhan adalah program dakwah rutin Yayasan Guru Ngaji Berdaya bekerjasama dengan para pengkisah untuk menghadirkan kajian dan motivasi di TPQ Kota Klaten selama bulan Ramadhan (1-26 Maret <?= $tahun_masehi ?>). Program ini memberikan pendidikan melalui kisah-kisah inspiratif kepada santri TPQ.">
 <meta name="twitter:image" content="https://gnb.or.id/safariramadhan/img/img1.jpg">
 
 
-<title>Safari Ramadhan 1446 H/2025</title>
+<title>Safari Ramadhan <?= $tahun_hijriyah ?> H/<?= $tahun_masehi ?></title>
 
     <link rel="stylesheet" href="assets/css/style.css">
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
@@ -69,11 +87,12 @@ try {
         <li><a href="#team_safari">Tim Safari</a></li>
         <li><a href="#kontak">Kontak</a></li>
         <li class="cta-button"><a href="jadwal_safariramadhan.php" class="donate-btn">Jadwal Safari</a></li>
+
         <li class="cta-button"><a href="form.php" class="donate-btn daftar-online">Daftar Online</a></li>
         <li class="cta-button"><a href="donasi.php" class="donate-btn donasi">Donasi</a></li>
         <li class="cta-button">
             <a href="login_p.php" class="btn-login-nav" title="Login">
-                <i class='bx bx-log-in'></i>
+                <i class='bx bx-log-in'></i> Login
             </a>
         </li>
     </ul>
@@ -81,64 +100,79 @@ try {
 
     <!-- Hero Section -->
     <section id="hero" class="hero">
-        <?php
-        // Fetch hero slides
-        try {
-            $stmt = $conn->prepare("SELECT * FROM hero_slides WHERE aktif = 1 ORDER BY urutan ASC");
-            $stmt->execute();
-            $hero_slides = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch(PDOException $e) {
-            $hero_slides = [];
-        }
-        ?>
-
-        <div class="slider desktop-only">
-            <?php if (!empty($hero_slides)): ?>
-                <?php foreach ($hero_slides as $slide): ?>
-                <div class="slide">
-                    <div class="slide-content">
-                        <?php if (!empty($slide['link'])): ?>
-                            <a href="<?= htmlspecialchars($slide['link']) ?>">
+        <?php if ($programStatus === 'active'): ?>
+            <?php
+            // Fetch hero slides
+            try {
+                $stmt = $conn->prepare("SELECT * FROM hero_slides WHERE aktif = 1 ORDER BY urutan ASC");
+                $stmt->execute();
+                $hero_slides = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            } catch(PDOException $e) {
+                $hero_slides = [];
+            }
+            ?>
+    
+            <div class="slider desktop-only">
+                <?php if (!empty($hero_slides)): ?>
+                    <?php foreach ($hero_slides as $slide): ?>
+                    <div class="slide">
+                        <div class="slide-content">
+                            <?php if (!empty($slide['link'])): ?>
+                                <a href="<?= htmlspecialchars($slide['link']) ?>">
+                                    <img src="img/slides/<?= htmlspecialchars($slide['gambar']) ?>" alt="<?= htmlspecialchars($slide['judul']) ?>">
+                                </a>
+                            <?php else: ?>
                                 <img src="img/slides/<?= htmlspecialchars($slide['gambar']) ?>" alt="<?= htmlspecialchars($slide['judul']) ?>">
-                            </a>
-                        <?php else: ?>
-                            <img src="img/slides/<?= htmlspecialchars($slide['gambar']) ?>" alt="<?= htmlspecialchars($slide['judul']) ?>">
-                        <?php endif; ?>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <!-- Fallback Text -->
+                    <div class="slide">
+                        <div class="slide-content" style="display: flex; justify-content: center; align-items: center; background-color: #f8f9fa;">
+                            <h3 style="color: #6c757d; font-weight: normal;">Belum ada banner yang aktif</h3>
+                        </div>
+                    </div>
+                <?php endif; ?>
+            </div>
+    
+            <div class="slider-nav">
+                <button class="nav-button prev">❮</button>
+                <button class="nav-button next">❯</button>
+            </div>
+    
+            <div class="slider-dots">
+                <?php if (!empty($hero_slides)): ?>
+                    <?php foreach ($hero_slides as $index => $slide): ?>
+                        <div class="dot <?= $index === 0 ? 'active' : '' ?>"></div>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <div class="dot active"></div>
+                <?php endif; ?>
+            </div>
+        <?php else: ?>
+            <!-- Program Ended Banner -->
+            <div class="container h-100 d-flex align-items-center justify-content-center" style="display: flex; align-items: center; justify-content: center; height: 100%; background: linear-gradient(135deg, #20B2AA 0%, #008B8B 100%); text-align: center; color: white; padding: 0 20px;">
+                <div class="ended-message" style="max-width: 800px;">
+                    <h1 style="font-size: 2.5rem; margin-bottom: 20px; font-weight: bold;">
+                        <i class='bx bx-moon'></i> Safari Ramadhan <?= $tahun_hijriyah ?> H
+                    </h1>
+                    <div style="font-size: 1.2rem; line-height: 1.8; white-space: pre-line;">
+                        <?= htmlspecialchars($programEndedMessage) ?>
                     </div>
                 </div>
-                <?php endforeach; ?>
-            <?php else: ?>
-                <!-- Fallback Text -->
-                <div class="slide">
-                    <div class="slide-content" style="display: flex; justify-content: center; align-items: center; background-color: #f8f9fa;">
-                        <h3 style="color: #6c757d; font-weight: normal;">Belum ada banner yang aktif</h3>
-                    </div>
-                </div>
-            <?php endif; ?>
-        </div>
-
-        <div class="slider-nav">
-            <button class="nav-button prev">❮</button>
-            <button class="nav-button next">❯</button>
-        </div>
-
-        <div class="slider-dots">
-            <?php if (!empty($hero_slides)): ?>
-                <?php foreach ($hero_slides as $index => $slide): ?>
-                    <div class="dot <?= $index === 0 ? 'active' : '' ?>"></div>
-                <?php endforeach; ?>
-            <?php else: ?>
-                <div class="dot active"></div>
-            <?php endif; ?>
-        </div>
+            </div>
+        <?php endif; ?>
     </section>
     
     <?php
 require_once 'koneksi.php';
 
 // Mengambil data program dari database
+// Mengambil data program dari database
 try {
-    $query = "SELECT * FROM program ORDER BY tgl_update DESC";
+    $query = "SELECT * FROM program WHERE status = 'published' ORDER BY urutan ASC, tgl_update DESC";
     $stmt = $conn->prepare($query);
     $stmt->execute();
     $programs = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -184,161 +218,168 @@ try {
 </section>
     
     <!--Profile-->
-    <?php
-require_once 'koneksi.php';
+    <?php if ($programStatus === 'active'): ?>
+        <?php
+        require_once 'koneksi.php';
 
-// Ambil data profil terbaru
-try {
-    $query = "SELECT * FROM profil ORDER BY tgl_update DESC LIMIT 1";
-    $stmt = $conn->query($query);
-    $profil = $stmt->fetch(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    echo "Terjadi kesalahan: " . $e->getMessage();
-}
-?>
+        // Ambil data profil terbaru
+        try {
+            $query = "SELECT * FROM profil ORDER BY tgl_update DESC LIMIT 1";
+            $stmt = $conn->query($query);
+            $profil = $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            echo "Terjadi kesalahan: " . $e->getMessage();
+        }
+        ?>
 
-<!-- /* Profile */ -->
-<section class="profile-section">
-    <div class="container">
-        <div class="profile-container">
-            <?php if (isset($profil) && $profil): ?>
-                <div class="profile-video">
-                    <iframe src="https://www.youtube.com/embed/<?= htmlspecialchars($profil['video_url']) ?>" 
-                            allowfullscreen></iframe>
+        <!-- /* Profile */ -->
+        <section class="profile-section">
+            <div class="container">
+                <div class="profile-container">
+                    <?php if (isset($profil) && $profil): ?>
+                        <div class="profile-video">
+                            <iframe src="https://www.youtube.com/embed/<?= htmlspecialchars($profil['video_url']) ?>" 
+                                    allowfullscreen></iframe>
+                        </div>
+                        <div class="profile-content">
+                            <h2 class="profile-title"><?= htmlspecialchars($profil['judul']) ?></h2>
+                            <p class="profile-text">
+                                <?= nl2br(htmlspecialchars($profil['deskripsi'])) ?>
+                            </p>
+                            <a href="form.php" class="profile-btn">DAFTAR SEKARANG</a>
+                        </div>
+                    <?php else: ?>
+                        <div class="profile-content text-center">
+                            <p>Informasi profil belum tersedia</p>
+                        </div>
+                    <?php endif; ?>
                 </div>
-                <div class="profile-content">
-                    <h2 class="profile-title"><?= htmlspecialchars($profil['judul']) ?></h2>
-                    <p class="profile-text">
-                        <?= nl2br(htmlspecialchars($profil['deskripsi'])) ?>
-                    </p>
-                    <a href="form.php" class="profile-btn">DAFTAR SEKARANG</a>
-                </div>
-            <?php else: ?>
-                <div class="profile-content text-center">
-                    <p>Informasi profil belum tersedia</p>
-                </div>
-            <?php endif; ?>
-        </div>
-    </div>
-</section>
+            </div>
+        </section>
+    <?php endif; ?>
 
    <?php
-require_once 'koneksi.php';
+   if ($programStatus === 'active') {
+       require_once 'koneksi.php';
 
-// Ambil data kategori
-try {
-    $query = "SELECT * FROM gallery_kategori ORDER BY nama_kategori";
-    $stmt = $conn->query($query);
-    $kategoris = $stmt->fetchAll(PDO::FETCH_ASSOC);
+       // Ambil data kategori
+       try {
+           $query = "SELECT * FROM gallery_kategori ORDER BY nama_kategori";
+           $stmt = $conn->query($query);
+           $kategoris = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Ambil data gallery dengan kategori
-    $query = "SELECT g.*, k.nama_kategori, k.slug 
-              FROM gallery g 
-              JOIN gallery_kategori k ON g.id_kategori = k.id_kategori 
-              ORDER BY g.tgl_update DESC";
-    $stmt = $conn->query($query);
-    $galleries = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    echo "Terjadi kesalahan: " . $e->getMessage();
-}
-?>
+           // Ambil data gallery dengan kategori
+           $query = "SELECT g.*, k.nama_kategori, k.slug 
+                     FROM gallery g 
+                     JOIN gallery_kategori k ON g.id_kategori = k.id_kategori 
+                     ORDER BY g.tgl_update DESC";
+           $stmt = $conn->query($query);
+           $galleries = $stmt->fetchAll(PDO::FETCH_ASSOC);
+       } catch (PDOException $e) {
+           echo "Terjadi kesalahan: " . $e->getMessage();
+       }
+   ?>
 
-<!-- Gallery -->
-<div class="container">
-    <section id="gallery" class="gallery-section">
-        <h2 class="section-title">GALLERY</h2>
-        <div class="gallery-tabs">
-            <button class="gallery-tab active" data-category="all">Semua</button>
-            <?php foreach ($kategoris as $kategori): ?>
-                <button class="gallery-tab" data-category="<?= htmlspecialchars($kategori['slug']) ?>">
-                    <?= htmlspecialchars($kategori['nama_kategori']) ?>
-                </button>
-            <?php endforeach; ?>
-        </div>
-        <div class="gallery-container">
-            <?php foreach ($galleries as $gallery): ?>
-                <div class="gallery-item" data-category="<?= htmlspecialchars($gallery['slug']) ?>">
-                    <img src="img/gallery/<?= htmlspecialchars($gallery['gambar']) ?>" 
-                         alt="<?= htmlspecialchars($gallery['judul']) ?>" 
-                         class="gallery-image">
-                    <div class="gallery-overlay">
-                        <h3><?= htmlspecialchars($gallery['judul']) ?></h3>
+    <!-- Gallery -->
+    <div class="container">
+        <section id="gallery" class="gallery-section">
+            <h2 class="section-title">GALLERY</h2>
+            <div class="gallery-tabs">
+                <button class="gallery-tab active" data-category="all">Semua</button>
+                <?php foreach ($kategoris as $kategori): ?>
+                    <button class="gallery-tab" data-category="<?= htmlspecialchars($kategori['slug']) ?>">
+                        <?= htmlspecialchars($kategori['nama_kategori']) ?>
+                    </button>
+                <?php endforeach; ?>
+            </div>
+            <div class="gallery-container">
+                <?php foreach ($galleries as $gallery): ?>
+                    <div class="gallery-item" data-category="<?= htmlspecialchars($gallery['slug']) ?>">
+                        <img src="img/gallery/<?= htmlspecialchars($gallery['gambar']) ?>" 
+                             alt="<?= htmlspecialchars($gallery['judul']) ?>" 
+                             class="gallery-image">
+                        <div class="gallery-overlay">
+                            <h3><?= htmlspecialchars($gallery['judul']) ?></h3>
+                        </div>
                     </div>
-                </div>
-            <?php endforeach; ?>
+                <?php endforeach; ?>
+            </div>
+        </section>
+    </div>
+   <?php } ?>
+<?php if ($programStatus === 'active'): ?>
+    <?php
+    require_once 'koneksi.php';
+
+    // Ambil 4 berita terbaru yang sudah dipublish
+    try {
+        $query = "SELECT * FROM berita 
+                  WHERE status = 'published' 
+                  ORDER BY tgl_posting DESC 
+                  LIMIT 8";
+        $stmt = $conn->query($query);
+        $beritas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        echo "Terjadi kesalahan: " . $e->getMessage();
+    }
+
+    // Fungsi untuk memotong excerpt
+    function createExcerpt($text, $length = 100) {
+        // Hilangkan HTML tags
+        $text = strip_tags($text);
+        // Potong teks
+        if (strlen($text) > $length) {
+            $text = substr($text, 0, $length) . '...';
+        }
+        return $text;
+    }
+    ?>
+
+    <!-- Berita -->
+    <section id="news" class="news-section">
+        <div class="container">
+            <h2 class="section-title">BERITA & KEGIATAN</h2>
+            <div class="news-container">
+                <?php if (!empty($beritas)): ?>
+                    <?php foreach ($beritas as $berita): ?>
+                        <article class="news-card">
+                            <img src="img/berita/<?= htmlspecialchars($berita['gambar']) ?>" 
+                                 alt="<?= htmlspecialchars($berita['judul']) ?>" 
+                                 class="news-image">
+                            <div class="news-content">
+                                <div class="news-date">
+                                    <?= date('d/m/Y', strtotime($berita['tgl_posting'])) ?>
+                                </div>
+                                <h3 class="news-headline">
+                                    <?= htmlspecialchars($berita['judul']) ?>
+                                </h3>
+                                <p class="news-excerpt">
+                                    <?= createExcerpt($berita['konten']) ?>
+                                </p>
+                                <a href="baca_berita.php?slug=<?= $berita['slug'] ?>" class="news-btn">Baca</a>
+                            </div>
+                        </article>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <div class="text-center w-100">
+                        <p>Belum ada berita yang dipublikasikan</p>
+                    </div>
+                <?php endif; ?>
+            </div>
         </div>
     </section>
-</div>
-<?php
-require_once 'koneksi.php';
-
-// Ambil 4 berita terbaru yang sudah dipublish
-try {
-    $query = "SELECT * FROM berita 
-              WHERE status = 'published' 
-              ORDER BY tgl_posting DESC 
-              LIMIT 8";
-    $stmt = $conn->query($query);
-    $beritas = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    echo "Terjadi kesalahan: " . $e->getMessage();
-}
-
-// Fungsi untuk memotong excerpt
-function createExcerpt($text, $length = 100) {
-    // Hilangkan HTML tags
-    $text = strip_tags($text);
-    // Potong teks
-    if (strlen($text) > $length) {
-        $text = substr($text, 0, $length) . '...';
-    }
-    return $text;
-}
-?>
-
-<!-- Berita -->
-<section id="news" class="news-section">
-    <div class="container">
-        <h2 class="section-title">BERITA & KEGIATAN</h2>
-        <div class="news-container">
-            <?php if (!empty($beritas)): ?>
-                <?php foreach ($beritas as $berita): ?>
-                    <article class="news-card">
-                        <img src="img/berita/<?= htmlspecialchars($berita['gambar']) ?>" 
-                             alt="<?= htmlspecialchars($berita['judul']) ?>" 
-                             class="news-image">
-                        <div class="news-content">
-                            <div class="news-date">
-                                <?= date('d/m/Y', strtotime($berita['tgl_posting'])) ?>
-                            </div>
-                            <h3 class="news-headline">
-                                <?= htmlspecialchars($berita['judul']) ?>
-                            </h3>
-                            <p class="news-excerpt">
-                                <?= createExcerpt($berita['konten']) ?>
-                            </p>
-                            <a href="baca_berita.php?slug=<?= $berita['slug'] ?>" class="news-btn">Baca</a>
-                        </div>
-                    </article>
-                <?php endforeach; ?>
-            <?php else: ?>
-                <div class="text-center w-100">
-                    <p>Belum ada berita yang dipublikasikan</p>
-                </div>
-            <?php endif; ?>
-        </div>
-    </div>
-</section>
+<?php endif; ?>
 
 <!--Team Safari-->
 
+<?php if ($programStatus === 'active'): ?>
     <!-- Team Safari Section -->
     <section id="team_safari" class="team-section">
         <div class="team-container">
             <h2 class="section-title">TIM SAFARI RAMADHAN</h2>
             
             <p class="team-intro">
-                Tim Safari Ramadhan 1446 H/2025 terdiri dari para ustadz dan kakak pengkisah yang berpengalaman 
+                Tim Safari Ramadhan <?= $tahun_hijriyah ?> H/<?= $tahun_masehi ?> terdiri dari para ustadz dan kakak pengkisah yang berpengalaman 
                 dalam memberikan kajian dan kisah inspiratif kepada santri TPQ di seluruh Klaten. Mereka siap 
                 menghadirkan kegiatan dakwah yang menarik dan edukatif selama bulan Ramadhan.
             </p>
@@ -375,11 +416,7 @@ function createExcerpt($text, $length = 100) {
         <div class="team-location">
             <i class='bx bx-map'></i> <?= htmlspecialchars($pengisi['alamat']) ?>
         </div>
-        <div class="team-contact">
-            <a href="https://wa.me/<?= $pengisi['no_hp'] ?>" class="contact-icon" target="_blank">
-                <i class='bx bxl-whatsapp'></i>
-            </a>
-        </div>
+
     </div>
 </div>
                 <?php
@@ -393,59 +430,62 @@ function createExcerpt($text, $length = 100) {
             </div>
         </div>
     </section>
+<?php endif; ?>
 <!--Team Safari-->
 
    <?php
-require_once 'koneksi.php';
+   if ($programStatus === 'active') {
+       require_once 'koneksi.php';
 
-// Ambil data sponsor yang aktif
-try {
-    $query = "SELECT * FROM sponsor WHERE status = 'aktif' ORDER BY urutan";
-    $stmt = $conn->query($query);
-    $sponsors = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    echo "Terjadi kesalahan: " . $e->getMessage();
-}
-?>
+       // Ambil data sponsor yang aktif
+       try {
+           $query = "SELECT * FROM sponsor WHERE status = 'aktif' ORDER BY urutan";
+           $stmt = $conn->query($query);
+           $sponsors = $stmt->fetchAll(PDO::FETCH_ASSOC);
+       } catch (PDOException $e) {
+           echo "Terjadi kesalahan: " . $e->getMessage();
+       }
+   ?>
 
-<!-- Sponsor -->
-<section class="sponsor-section">
-    <?php if (!empty($sponsors)): ?>
-        <div class="sponsor-container">
-            <div class="sponsor-track">
-                <!-- Original sponsors -->
-                <?php foreach ($sponsors as $sponsor): ?>
-                    <div class="sponsor-item">
-                        <?php if (!empty($sponsor['url'])): ?>
-                            <a href="<?= htmlspecialchars($sponsor['url']) ?>" target="_blank">
+    <!-- Sponsor -->
+    <section class="sponsor-section">
+        <?php if (!empty($sponsors)): ?>
+            <div class="sponsor-container">
+                <div class="sponsor-track">
+                    <!-- Original sponsors -->
+                    <?php foreach ($sponsors as $sponsor): ?>
+                        <div class="sponsor-item">
+                            <?php if (!empty($sponsor['url'])): ?>
+                                <a href="<?= htmlspecialchars($sponsor['url']) ?>" target="_blank">
+                                    <img src="img/sponsor/<?= htmlspecialchars($sponsor['gambar']) ?>" 
+                                         alt="<?= htmlspecialchars($sponsor['nama_sponsor']) ?>">
+                                </a>
+                            <?php else: ?>
                                 <img src="img/sponsor/<?= htmlspecialchars($sponsor['gambar']) ?>" 
                                      alt="<?= htmlspecialchars($sponsor['nama_sponsor']) ?>">
-                            </a>
-                        <?php else: ?>
-                            <img src="img/sponsor/<?= htmlspecialchars($sponsor['gambar']) ?>" 
-                                 alt="<?= htmlspecialchars($sponsor['nama_sponsor']) ?>">
-                        <?php endif; ?>
-                    </div>
-                <?php endforeach; ?>
-                
-                <!-- Duplicate set for seamless loop -->
-                <?php foreach ($sponsors as $sponsor): ?>
-                    <div class="sponsor-item">
-                        <?php if (!empty($sponsor['url'])): ?>
-                            <a href="<?= htmlspecialchars($sponsor['url']) ?>" target="_blank">
+                            <?php endif; ?>
+                        </div>
+                    <?php endforeach; ?>
+                    
+                    <!-- Duplicate set for seamless loop -->
+                    <?php foreach ($sponsors as $sponsor): ?>
+                        <div class="sponsor-item">
+                            <?php if (!empty($sponsor['url'])): ?>
+                                <a href="<?= htmlspecialchars($sponsor['url']) ?>" target="_blank">
+                                    <img src="img/sponsor/<?= htmlspecialchars($sponsor['gambar']) ?>" 
+                                         alt="<?= htmlspecialchars($sponsor['nama_sponsor']) ?>">
+                                </a>
+                            <?php else: ?>
                                 <img src="img/sponsor/<?= htmlspecialchars($sponsor['gambar']) ?>" 
                                      alt="<?= htmlspecialchars($sponsor['nama_sponsor']) ?>">
-                            </a>
-                        <?php else: ?>
-                            <img src="img/sponsor/<?= htmlspecialchars($sponsor['gambar']) ?>" 
-                                 alt="<?= htmlspecialchars($sponsor['nama_sponsor']) ?>">
-                        <?php endif; ?>
-                    </div>
-                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
             </div>
-        </div>
-    <?php endif; ?>
-</section>
+        <?php endif; ?>
+    </section>
+   <?php } ?>
     <!-- footer -->
     <?php include 'footer_content.php'; ?>
 

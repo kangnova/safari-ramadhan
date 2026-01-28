@@ -25,6 +25,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id'])) {
         $stmt = $conn->prepare("DELETE FROM persetujuan_lembaga WHERE lembaga_id = ?");
         $stmt->execute([$id]);
 
+
+
         // Hapus data dari tabel lembaga
         $stmt = $conn->prepare("DELETE FROM lembaga WHERE id = ?");
         $stmt->execute([$id]);
@@ -34,7 +36,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id'])) {
 
     } catch (Exception $e) {
         $conn->rollBack();
-        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        
+        // Cek jika error adalah integrity constraint violation
+        if ($e->getCode() == '23000' || strpos($e->getMessage(), 'Integrity constraint violation') !== false) {
+             echo json_encode(['success' => false, 'message' => 'Gagal menghapus! Lembaga ini masih memiliki jadwal safari yang terkait. Silakan hapus jadwalnya terlebih dahulu di menu Jadwal.']);
+        } else {
+             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
     }
 } else {
     echo json_encode(['success' => false, 'message' => 'Invalid request']);

@@ -10,9 +10,12 @@ if (!isset($_SESSION['pengisi_id'])) {
 
 try {
     $stmt = $conn->prepare("
-        SELECT js.*, l.nama_lembaga, l.alamat, l.no_wa 
+        SELECT js.*, l.nama_lembaga, l.alamat, l.no_wa, l.share_loc,
+               ps.nama_pendamping, p.no_hp as no_hp_pendamping
         FROM jadwal_safari js 
         JOIN lembaga l ON js.lembaga_id = l.id 
+        LEFT JOIN pendamping_safari ps ON js.id = ps.jadwal_id
+        LEFT JOIN pendamping p ON ps.pendamping_id = p.id
         WHERE js.pengisi = ? 
         ORDER BY js.tanggal ASC, js.jam ASC
     ");
@@ -44,6 +47,9 @@ try {
                         <span class="nav-link">Selamat datang, <?php echo $_SESSION['pengisi_nama']; ?></span>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#changePasswordModal">Ganti Password</a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" href="logout.php">Logout</a>
                     </li>
                 </ul>
@@ -53,6 +59,20 @@ try {
 
     <div class="container mt-4">
         <h2 class="mb-4">Jadwal Safari Ramadhan</h2>
+
+        <?php if (isset($_SESSION['success'])): ?>
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <?php echo $_SESSION['success']; unset($_SESSION['success']); ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        <?php endif; ?>
+
+        <?php if (isset($_SESSION['error'])): ?>
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <?php echo $_SESSION['error']; unset($_SESSION['error']); ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        <?php endif; ?>
 
         <?php if (isset($error)): ?>
             <div class="alert alert-danger"><?php echo $error; ?></div>
@@ -67,7 +87,8 @@ try {
         <th>Jam</th>
         <th>Lembaga</th>
         <th>Alamat</th>
-        <th>No. WhatsApp</th>
+        <th>Pendamping</th>
+        <th>Maps</th>
         <th>Status</th>
         <th>Aksi</th>
     </tr>
@@ -82,9 +103,22 @@ try {
                 <td><?php echo htmlspecialchars($row['nama_lembaga']); ?></td>
                 <td><?php echo htmlspecialchars($row['alamat']); ?></td>
                 <td>
-                    <a href="https://wa.me/<?php echo $row['no_wa']; ?>" target="_blank" class="btn btn-success btn-sm">
-                        Chat WA
-                    </a>
+                    <?php echo htmlspecialchars($row['nama_pendamping'] ?? '-'); ?>
+                    <?php if (!empty($row['no_hp_pendamping'])): ?>
+                        <br>
+                        <a href="https://wa.me/<?php echo $row['no_hp_pendamping']; ?>" target="_blank" class="text-success text-decoration-none">
+                            <small><i class="bi bi-whatsapp"></i> <?php echo $row['no_hp_pendamping']; ?></small>
+                        </a>
+                    <?php endif; ?>
+                </td>
+                <td>
+                    <?php if (!empty($row['share_loc'])): ?>
+                        <a href="<?php echo htmlspecialchars($row['share_loc']); ?>" target="_blank" class="btn btn-secondary btn-sm">
+                            <i class="bi bi-geo-alt-fill"></i> Maps
+                        </a>
+                    <?php else: ?>
+                        -
+                    <?php endif; ?>
                 </td>
                 <td>
                     <span class="badge <?php 
@@ -205,6 +239,38 @@ try {
     <?php endif; ?>
 </tbody>
             </table>
+        </div>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div class="modal fade" id="changePasswordModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Ganti Password</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form action="update_password_p.php" method="POST">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="current_password" class="form-label">Password Saat Ini</label>
+                            <input type="password" class="form-control" name="current_password" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="new_password" class="form-label">Password Baru (Min. 6 Karakter)</label>
+                            <input type="password" class="form-control" name="new_password" required minlength="6">
+                        </div>
+                        <div class="mb-3">
+                            <label for="confirm_password" class="form-label">Konfirmasi Password Baru</label>
+                            <input type="password" class="form-control" name="confirm_password" required minlength="6">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-primary">Simpan Password</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 

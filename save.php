@@ -119,7 +119,7 @@ try {
             $lembaga_id,
             $_POST['frekuensi'],
             isset($_POST['persetujuan']) && $_POST['persetujuan'] === 'setuju' ? 1 : 0,
-            isset($_POST['duta_gnb']) && $_POST['duta_gnb'] === 'bersedia' ? 1 : 0,
+            (!empty($_POST['duta_gnb']) && $_POST['duta_gnb'] !== 'opsional') ? $_POST['duta_gnb'] : null,
             isset($_POST['kesediaan_infaq']) && $_POST['kesediaan_infaq'] === 'ya' ? 1 : 0,
             $_POST['manfaat'] ?? '',
             isset($_POST['pemahaman']) && $_POST['pemahaman'] === 'ya' ? 1 : 0

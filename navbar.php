@@ -25,7 +25,7 @@ $current_page = basename($_SERVER['PHP_SELF'], '.php');
         <li class="cta-button"><a href="donasi.php" class="donate-btn donasi">Donasi</a></li>
         <li class="cta-button">
             <a href="login_p.php" class="btn-login-nav" title="Login">
-                <i class='bx bx-log-in'></i>
+                <i class='bx bx-log-in'></i> Login
             </a>
         </li>
     </ul>

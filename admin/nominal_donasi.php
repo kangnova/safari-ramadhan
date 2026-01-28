@@ -12,7 +12,7 @@ $message = '';
 $messageType = '';
 
 // Proses form submit untuk menambah atau mengupdate nominal donasi
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_nominal'])) {
     // Jika ada id, berarti update
     if (isset($_POST['id']) && !empty($_POST['id'])) {
         try {
@@ -54,6 +54,25 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 }
 
+// Proses update urutan
+if (isset($_POST['update_order'])) {
+    try {
+        if (isset($_POST['order']) && is_array($_POST['order'])) {
+            $stmt = $conn->prepare("UPDATE nominal_donasi SET urutan = ? WHERE id = ?");
+            foreach ($_POST['order'] as $id => $order) {
+                // Urutan dari SortableJS bisa 0-based, kita tambah 1 agar human friendly
+                // Atau cukup ambil value yang dikirim hidden input (sudah +1 di JS)
+                $stmt->execute([$order, $id]);
+            }
+            $message = "Urutan berhasil diperbarui!";
+            $messageType = "success";
+        }
+    } catch (PDOException $e) {
+        $message = "Error: " . $e->getMessage();
+        $messageType = "danger";
+    }
+}
+
 // Proses hapus nominal donasi
 if (isset($_GET['delete']) && !empty($_GET['delete'])) {
     try {
@@ -72,21 +91,8 @@ if (isset($_GET['toggle']) && !empty($_GET['toggle'])) {
     try {
         $stmt = $conn->prepare("UPDATE nominal_donasi SET is_active = NOT is_active WHERE id = ?");
         $stmt->execute([$_GET['toggle']]);
-        $message = "Status nominal donasi berhasil diubah!";
+        $message = "Status berhasil diubah!";
         $messageType = "success";
-    } catch(PDOException $e) {
-        $message = "Error: " . $e->getMessage();
-        $messageType = "danger";
-    }
-}
-
-// Ambil data untuk editing jika ada parameter id
-$editData = null;
-if (isset($_GET['edit']) && !empty($_GET['edit'])) {
-    try {
-        $stmt = $conn->prepare("SELECT * FROM nominal_donasi WHERE id = ?");
-        $stmt->execute([$_GET['edit']]);
-        $editData = $stmt->fetch(PDO::FETCH_ASSOC);
     } catch(PDOException $e) {
         $message = "Error: " . $e->getMessage();
         $messageType = "danger";
@@ -119,253 +125,240 @@ function formatRupiah($nominal) {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
-
-        
-        .nominal-preview {
-            border: 1px solid #dee2e6;
-            border-radius: 8px;
-            padding: 15px;
-            margin-top: 15px;
-            background-color: #f8f9fa;
-        }
-        
-        .nominal-option {
+        .page-header {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            margin-bottom: 25px;
             display: flex;
+            justify-content: space-between;
             align-items: center;
-            padding: 12px 15px;
-            border: 1px solid #dee2e6;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            cursor: pointer;
-            transition: all 0.2s;
         }
         
-        .nominal-option:hover {
+        .table-custom {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            overflow: hidden;
+        }
+        
+        .table-custom th {
             background-color: #f8f9fa;
-        }
-        
-        .nominal-option.selected {
-            border-color: #0d6efd;
-            background-color: rgba(13, 110, 253, 0.1);
-        }
-        
-        .emoji {
-            font-size: 24px;
-            margin-right: 15px;
-            min-width: 40px;
-            text-align: center;
-        }
-        
-        .nominal-text {
-            font-weight: 500;
-            flex-grow: 1;
-        }
-        
-        .nominal-item {
-            border: 1px solid #ddd;
-            padding: 10px;
-            margin-bottom: 10px;
-            border-radius: 5px;
+            border-bottom: 2px solid #dee2e6;
+            color: #495057;
+            font-weight: 600;
         }
         
         .drag-handle {
             cursor: move;
-            padding: 5px;
-            color: #777;
+            color: #adb5bd;
+            transition: color 0.2s;
         }
         
-
+        .drag-handle:hover {
+            color: #495057;
+        }
+        
+        .emoji-cell {
+            font-size: 1.5rem;
+            width: 50px;
+            text-align: center;
+        }
     </style>
 </head>
-<body>
+<body class="bg-light">
     <?php include 'includes/header.php'; ?>
+    
     <div class="container-fluid mt-4">
-            <h2 class="mb-4">Manajemen Nominal Donasi</h2>
-            
-            <?php if ($message): ?>
-            <div class="alert alert-<?php echo $messageType; ?> alert-dismissible fade show" role="alert">
-                <?php echo $message; ?>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        
+        <!-- Header & Action -->
+        <div class="page-header">
+            <div>
+                <h3 class="mb-0 fw-bold text-primary">Manajemen Nominal Donasi</h3>
+                <p class="text-muted mb-0 mt-1">Atur pilihan nominal donasi yang muncul di halaman donasi.</p>
             </div>
-            <?php endif; ?>
-            
-            <!-- Form Tambah/Edit Nominal Donasi -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="fas fa-<?php echo $editData ? 'edit' : 'plus-circle'; ?> me-2"></i>
-                        <?php echo $editData ? 'Edit Nominal Donasi' : 'Tambah Nominal Donasi Baru'; ?>
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <form action="" method="post">
-                        <?php if($editData): ?>
-                        <input type="hidden" name="id" value="<?php echo $editData['id']; ?>">
-                        <?php endif; ?>
-                        
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="nominal" class="form-label">Nominal</label>
-                                <div class="input-group">
-                                    <span class="input-group-text">Rp</span>
-                                    <input type="number" class="form-control" id="nominal" name="nominal" 
-                                           value="<?php echo $editData ? $editData['nominal'] : ''; ?>" required>
-                                </div>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="emoji" class="form-label">Emoji</label>
-                                <input type="text" class="form-control" id="emoji" name="emoji" 
-                                       value="<?php echo $editData ? htmlspecialchars($editData['emoji']) : ''; ?>" required>
-                                <div class="form-text">Contoh: 💰, 💸, 💎, 💍</div>
-                            </div>
-                        </div>
-                        
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="deskripsi" class="form-label">Deskripsi</label>
-                                <input type="text" class="form-control" id="deskripsi" name="deskripsi" 
-                                       value="<?php echo $editData ? htmlspecialchars($editData['deskripsi']) : ''; ?>">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="urutan" class="form-label">Urutan</label>
-                                <input type="number" class="form-control" id="urutan" name="urutan" 
-                                       value="<?php echo $editData ? $editData['urutan'] : count($nominalDonasi) + 1; ?>" min="1">
-                            </div>
-                        </div>
-                        
-                        <div class="mb-3 form-check">
-                            <input type="checkbox" class="form-check-input" id="is_active" name="is_active" 
-                                   <?php echo (!$editData || $editData['is_active']) ? 'checked' : ''; ?>>
-                            <label class="form-check-label" for="is_active">Aktif</label>
-                        </div>
-                        
-                        <!-- Preview -->
-                        <div class="nominal-preview">
-                            <h6>Preview:</h6>
-                            <div class="nominal-option">
-                                <div class="emoji" id="preview-emoji"><?php echo $editData ? htmlspecialchars($editData['emoji']) : '💰'; ?></div>
-                                <div class="nominal-text" id="preview-nominal"><?php echo $editData ? formatRupiah($editData['nominal']) : 'Rp 100.000'; ?></div>
-                                <i class="fas fa-chevron-right text-muted"></i>
-                            </div>
-                        </div>
-                        
-                        <div class="mt-3">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-<?php echo $editData ? 'save' : 'plus-circle'; ?> me-1"></i>
-                                <?php echo $editData ? 'Update' : 'Simpan'; ?>
-                            </button>
-                            
-                            <?php if($editData): ?>
-                            <a href="nominal_donasi.php" class="btn btn-secondary ms-2">
-                                <i class="fas fa-times me-1"></i> Batal
-                            </a>
-                            <?php endif; ?>
-                        </div>
-                    </form>
-                </div>
-            </div>
-            
-            <!-- Daftar Nominal Donasi -->
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="fas fa-list me-2"></i> Daftar Nominal Donasi</h5>
-                </div>
-                <div class="card-body">
-                    <?php if(count($nominalDonasi) > 0): ?>
-                    <form action="" method="post" id="order-form">
-                        <div id="nominal-list" class="mb-3">
-                            <?php foreach($nominalDonasi as $item): ?>
-                            <div class="nominal-item d-flex align-items-center" data-id="<?php echo $item['id']; ?>">
-                                <div class="drag-handle me-2">
-                                    <i class="fas fa-grip-vertical"></i>
-                                </div>
-                                <div class="me-3 emoji">
-                                    <?php echo htmlspecialchars($item['emoji']); ?>
-                                </div>
-                                <div class="flex-grow-1">
-                                    <h5 class="mb-1"><?php echo formatRupiah($item['nominal']); ?></h5>
-                                    <?php if(!empty($item['deskripsi'])): ?>
-                                    <p class="mb-0 text-muted small"><?php echo htmlspecialchars($item['deskripsi']); ?></p>
-                                    <?php endif; ?>
-                                    <input type="hidden" name="order[<?php echo $item['id']; ?>]" value="<?php echo $item['urutan']; ?>" class="order-input">
-                                </div>
-                                <div class="ms-auto d-flex">
-                                    <a href="?toggle=<?php echo $item['id']; ?>" 
-                                       class="btn btn-<?php echo $item['is_active'] ? 'success' : 'secondary'; ?> btn-sm me-2" 
-                                       title="<?php echo $item['is_active'] ? 'Nonaktifkan' : 'Aktifkan'; ?>">
-                                        <i class="fas fa-<?php echo $item['is_active'] ? 'eye' : 'eye-slash'; ?>"></i>
-                                    </a>
-                                    <a href="?edit=<?php echo $item['id']; ?>" class="btn btn-primary btn-sm me-2" title="Edit">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
-                                    <a href="?delete=<?php echo $item['id']; ?>" class="btn btn-danger btn-sm" 
-                                       onclick="return confirm('Apakah Anda yakin ingin menghapus nominal donasi ini?');" title="Hapus">
-                                        <i class="fas fa-trash"></i>
-                                    </a>
-                                </div>
-                            </div>
-                            <?php endforeach; ?>
-                        </div>
-                        
-                        <button type="submit" name="update_order" class="btn btn-success">
-                            <i class="fas fa-save me-2"></i>Simpan Urutan
-                        </button>
-                    </form>
-                    <?php else: ?>
-                    <div class="alert alert-info mb-0">
-                        Belum ada nominal donasi. Silakan tambahkan nominal baru.
-                    </div>
-                    <?php endif; ?>
-                </div>
-            </div>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#nominalModal" onclick="resetForm()">
+                <i class="fas fa-plus-circle me-2"></i>Tambah Nominal
+            </button>
         </div>
 
-    
+        <?php if ($message): ?>
+        <div class="alert alert-<?php echo $messageType; ?> alert-dismissible fade show" role="alert">
+            <?php echo $message; ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        <?php endif; ?>
+
+        <!-- Table View -->
+        <div class="card border-0 shadow-sm rounded-3">
+            <div class="card-body p-0">
+                <form action="" method="post" id="orderForm">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0" id="nominalTable">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th width="50" class="text-center">#</th>
+                                    <th width="80" class="text-center">Emoji</th>
+                                    <th>Nominal</th>
+                                    <th>Deskripsi</th>
+                                    <th width="100" class="text-center">Status</th>
+                                    <th width="150" class="text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sortableList">
+                                <?php if(count($nominalDonasi) > 0): ?>
+                                    <?php foreach($nominalDonasi as $item): ?>
+                                    <tr data-id="<?php echo $item['id']; ?>" 
+                                        data-nominal="<?php echo $item['nominal']; ?>"
+                                        data-emoji="<?php echo htmlspecialchars($item['emoji']); ?>"
+                                        data-deskripsi="<?php echo htmlspecialchars($item['deskripsi']); ?>"
+                                        data-urutan="<?php echo $item['urutan']; ?>"
+                                        data-active="<?php echo $item['is_active']; ?>">
+                                        
+                                        <td class="text-center">
+                                            <div class="drag-handle py-2"><i class="fas fa-grip-vertical"></i></div>
+                                            <!-- Hidden input for order -->
+                                            <input type="hidden" name="order[<?php echo $item['id']; ?>]" value="<?php echo $item['urutan']; ?>" class="order-input">
+                                        </td>
+                                        <td class="text-center emoji-cell"><?php echo $item['emoji']; ?></td>
+                                        <td>
+                                            <span class="fw-bold text-dark"><?php echo formatRupiah($item['nominal']); ?></span>
+                                        </td>
+                                        <td class="text-muted small">
+                                            <?php echo !empty($item['deskripsi']) ? htmlspecialchars($item['deskripsi']) : '-'; ?>
+                                        </td>
+                                        <td class="text-center">
+                                            <a href="?toggle=<?php echo $item['id']; ?>" class="badge rounded-pill bg-<?php echo $item['is_active'] ? 'success' : 'secondary'; ?> text-decoration-none">
+                                                <?php echo $item['is_active'] ? 'Aktif' : 'Nonaktif'; ?>
+                                            </a>
+                                        </td>
+                                        <td class="text-center">
+                                            <button type="button" class="btn btn-sm btn-outline-primary me-1" onclick="editNominal(this)">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <a href="?delete=<?php echo $item['id']; ?>" class="btn btn-sm btn-outline-danger" onclick="return confirm('Hapus nominal ini?')">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <tr>
+                                        <td colspan="6" class="text-center py-4 text-muted">Belum ada data nominal donasi.</td>
+                                    </tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                    <?php if(count($nominalDonasi) > 0): ?>
+                    <div class="p-3 bg-light border-top text-end">
+                        <button type="submit" name="update_order" class="btn btn-success btn-sm">
+                            <i class="fas fa-sort-amount-down me-2"></i>Simpan Urutan
+                        </button>
+                    </div>
+                    <?php endif; ?>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Form -->
+    <div class="modal fade" id="nominalModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTitle">Tambah Nominal Donasi</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form action="" method="post">
+                    <div class="modal-body">
+                        <input type="hidden" name="id" id="nominal_id">
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Nominal</label>
+                            <div class="input-group">
+                                <span class="input-group-text">Rp</span>
+                                <input type="number" class="form-control" name="nominal" id="input_nominal" required placeholder="Contoh: 100000">
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label fw-bold">Emoji</label>
+                                <input type="text" class="form-control text-center" name="emoji" id="input_emoji" required placeholder="💰">
+                            </div>
+                            <div class="col-md-8 mb-3">
+                                <label class="form-label fw-bold">Urutan</label>
+                                <input type="number" class="form-control" name="urutan" id="input_urutan" value="<?php echo count($nominalDonasi) + 1; ?>">
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Deskripsi / Label</label>
+                            <input type="text" class="form-control" name="deskripsi" id="input_deskripsi" placeholder="Contoh: Paket Sedekah Subuh">
+                        </div>
+                        
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="is_active" id="input_active" checked>
+                            <label class="form-check-label" for="input_active">Aktifkan Pilihan Ini</label>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" name="submit_nominal" class="btn btn-primary">Simpan Data</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Live preview saat input diubah
-            const nominalInput = document.getElementById('nominal');
-            const emojiInput = document.getElementById('emoji');
-            const previewEmoji = document.getElementById('preview-emoji');
-            const previewNominal = document.getElementById('preview-nominal');
+        // SortableJS init
+        const el = document.getElementById('sortableList');
+        if (el) {
+            new Sortable(el, {
+                handle: '.drag-handle',
+                animation: 150,
+                onEnd: function() {
+                    // Update hidden input urutan
+                    const items = el.querySelectorAll('tr');
+                    items.forEach((item, index) => {
+                        const input = item.querySelector('.order-input');
+                        if (input) input.value = index + 1;
+                    });
+                }
+            });
+        }
+
+        // JS for handling Modal Edit/Add
+        function resetForm() {
+            document.getElementById('modalTitle').textContent = 'Tambah Nominal Donasi';
+            document.getElementById('nominal_id').value = '';
+            document.getElementById('input_nominal').value = '';
+            document.getElementById('input_emoji').value = '';
+            document.getElementById('input_deskripsi').value = '';
+            document.getElementById('input_urutan').value = '<?php echo count($nominalDonasi) + 1; ?>';
+            document.getElementById('input_active').checked = true;
+        }
+
+        function editNominal(btn) {
+            const tr = btn.closest('tr');
+            const data = tr.dataset;
             
-            if (nominalInput && previewNominal) {
-                nominalInput.addEventListener('input', function() {
-                    const formatted = new Intl.NumberFormat('id-ID', { 
-                        style: 'currency', 
-                        currency: 'IDR',
-                        minimumFractionDigits: 0
-                    }).format(this.value);
-                    
-                    previewNominal.textContent = formatted;
-                });
-            }
+            document.getElementById('modalTitle').textContent = 'Edit Nominal Donasi';
+            document.getElementById('nominal_id').value = data.id;
+            document.getElementById('input_nominal').value = data.nominal;
+            document.getElementById('input_emoji').value = data.emoji;
+            document.getElementById('input_deskripsi').value = data.deskripsi;
+            document.getElementById('input_urutan').value = data.urutan;
+            document.getElementById('input_active').checked = (data.active == '1');
             
-            if (emojiInput && previewEmoji) {
-                emojiInput.addEventListener('input', function() {
-                    previewEmoji.textContent = this.value;
-                });
-            }
-            
-            // Inisialisasi Sortable untuk drag & drop urutan
-            const nominalList = document.getElementById('nominal-list');
-            if (nominalList) {
-                new Sortable(nominalList, {
-                    handle: '.drag-handle',
-                    animation: 150,
-                    onEnd: function() {
-                        // Update nilai input urutan setelah drag & drop
-                        const items = nominalList.querySelectorAll('.nominal-item');
-                        items.forEach((item, index) => {
-                            const id = item.getAttribute('data-id');
-                            const input = item.querySelector('.order-input');
-                            input.value = index + 1;
-                        });
-                    }
-                });
-            }
-        });
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('nominalModal'));
+            modal.show();
+        }
     </script>
 </body>
 </html>

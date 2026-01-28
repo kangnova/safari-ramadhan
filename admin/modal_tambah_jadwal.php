@@ -10,6 +10,7 @@ try {
             LEFT JOIN hari_aktif ha ON l.id = ha.lembaga_id 
             LEFT JOIN materi_dipilih md ON l.id = md.lembaga_id
             LEFT JOIN persetujuan_lembaga pl ON l.id = pl.lembaga_id
+            WHERE YEAR(l.created_at) = YEAR(NOW())
             GROUP BY l.id
             HAVING jumlah_terjadwal < frekuensi_kunjungan OR jumlah_terjadwal IS NULL
             ORDER BY l.nama_lembaga ASC";
@@ -101,6 +102,22 @@ try {
                             while($pengisi = $stmt->fetch()) {
                                 echo "<option value='" . htmlspecialchars($pengisi['nama']) . "'>";
                                 echo htmlspecialchars($pengisi['nama']);
+                                echo "</option>";
+                            }
+                            ?>
+                        </select>
+                    </div>
+                    <div class="form-group mb-3">
+                        <label class="form-label">Pendamping</label>
+                        <select name="pendamping_id" class="form-select" required>
+                            <option value="">Pilih Pendamping</option>
+                            <?php 
+                            $query_pendamping = "SELECT * FROM pendamping WHERE status = 'aktif' ORDER BY nama ASC";
+                            $stmt = $conn->prepare($query_pendamping);
+                            $stmt->execute();
+                            while($pendamping = $stmt->fetch()) {
+                                echo "<option value='" . $pendamping['id'] . "'>";
+                                echo htmlspecialchars($pendamping['nama']);
                                 echo "</option>";
                             }
                             ?>
