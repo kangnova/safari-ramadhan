@@ -544,7 +544,7 @@ $formMessage = $stmtM->fetchColumn() ?: 'Mohon maaf, pendaftaran Safari Ramadhan
 
                             <hr>
                             <div style="text-align: center; margin-top: 20px;">
-                                <a href="assets/docs/mou_safari.pdf" target="_blank" class="btn" id="btnDownloadMou" style="background: #20B2AA; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;" onclick="markMouDownloaded()">
+                                <a href="assets/docs/mou_safari.pdf" download="MOU_Safari_Ramadhan.pdf" class="btn" id="btnDownloadMou" style="background: #20B2AA; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;" onclick="markMouDownloaded()">
                                     <i class='bx bx-download'></i> Download File PDF MOU
                                 </a>
                             </div>

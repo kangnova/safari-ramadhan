@@ -43,9 +43,9 @@ try {
     $stmtQuota->execute();
     $quotaSafari = (int)$stmtQuota->fetchColumn();
 
-    // Ambil daftar unik kecamatan untuk filter dropdown
-    $stmtKec = $conn->prepare("SELECT DISTINCT kecamatan FROM lembaga WHERE kecamatan IS NOT NULL AND kecamatan != '' ORDER BY kecamatan ASC");
-    $stmtKec->execute();
+    // Ambil daftar unik kecamatan untuk filter dropdown (sesuai tahun)
+    $stmtKec = $conn->prepare("SELECT DISTINCT kecamatan FROM lembaga WHERE kecamatan IS NOT NULL AND kecamatan != '' AND YEAR(created_at) = :tahun ORDER BY kecamatan ASC");
+    $stmtKec->execute(['tahun' => $tahun]);
     $listKecamatan = $stmtKec->fetchAll(PDO::FETCH_COLUMN);
 
     // Query untuk data statistik

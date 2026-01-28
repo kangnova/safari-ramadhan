@@ -21,13 +21,13 @@ try {
         }
     }
     
-    // Cek semua duplikasi dalam satu query
+    // Cek semua duplikasi dalam satu query (Scope per tahun)
     $stmt = $conn->prepare("
         SELECT 
-            (SELECT COUNT(*) FROM lembaga WHERE email = ?) as email_count,
-            (SELECT COUNT(*) FROM lembaga WHERE nama_lembaga = ?) as lembaga_count,
-            (SELECT COUNT(*) FROM lembaga WHERE alamat = ? AND kecamatan = ?) as alamat_count,
-            (SELECT COUNT(*) FROM lembaga WHERE penanggung_jawab = ? AND no_wa = ?) as pj_count
+            (SELECT COUNT(*) FROM lembaga WHERE email = ? AND YEAR(created_at) = YEAR(NOW())) as email_count,
+            (SELECT COUNT(*) FROM lembaga WHERE nama_lembaga = ? AND YEAR(created_at) = YEAR(NOW())) as lembaga_count,
+            (SELECT COUNT(*) FROM lembaga WHERE alamat = ? AND kecamatan = ? AND YEAR(created_at) = YEAR(NOW())) as alamat_count,
+            (SELECT COUNT(*) FROM lembaga WHERE penanggung_jawab = ? AND no_wa = ? AND YEAR(created_at) = YEAR(NOW())) as pj_count
     ");
     
     $stmt->execute([
