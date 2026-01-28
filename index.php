@@ -42,6 +42,11 @@ if (isset($_SESSION['authenticated']) && $_SESSION['authenticated'] === true) {
 $stmtM = $conn->prepare("SELECT setting_value FROM settings WHERE setting_key = 'safari_program_ended_message'");
 $stmtM->execute();
 $programEndedMessage = $stmtM->fetchColumn() ?: '';
+// Setup Logo Path
+$logoPath = 'img/logo.png'; // Default fallback
+if (file_exists('assets/img/logo.png')) {
+    $logoPath = 'assets/img/logo.png';
+}
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -72,7 +77,7 @@ $programEndedMessage = $stmtM->fetchColumn() ?: '';
 <body>
     <nav class="navbar">
     <div class="logo">
-        <img src="img/logo.png" alt="Logo">
+        <img src="<?= $logoPath ?>?v=<?= time() ?>" alt="Logo">
     </div>
     <div class="hamburger">
         <span></span>
