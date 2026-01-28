@@ -23,19 +23,19 @@
 }
 
 .logo img {
-    height: auto;
-    max-height: 100px;
-    /* Maximized for clarity */
+    height: 80px;
+    /* Fixed height to guarantee size */
     width: auto;
+    max-width: none;
     object-fit: contain;
     display: block;
 }
 
 @media (max-width: 768px) {
     .logo img {
-        max-height: 70px;
-        /* Larger mobile logo */
-        max-width: 280px;
+        height: 50px;
+        /* Fixed mobile height */
+        max-width: 250px;
     }
 }
 
