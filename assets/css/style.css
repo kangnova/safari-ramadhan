@@ -6,11 +6,13 @@
 }
 
 /* Navbar Styles */
+/* Navbar Styles */
 .navbar {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1rem 2%;
+    padding: 0.5rem 2%;
+    /* Reduced padding to maximize logo space */
     background-color: white;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     position: fixed;
@@ -22,19 +24,18 @@
 
 .logo img {
     height: auto;
-    max-height: 80px;
-    /* Increased significantly */
+    max-height: 100px;
+    /* Maximized for clarity */
     width: auto;
-    max-width: 400px;
     object-fit: contain;
     display: block;
 }
 
 @media (max-width: 768px) {
     .logo img {
-        max-height: 50px;
-        /* Slightly smaller for mobile */
-        max-width: 200px;
+        max-height: 70px;
+        /* Larger mobile logo */
+        max-width: 280px;
     }
 }
 
