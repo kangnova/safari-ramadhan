@@ -21,7 +21,13 @@
 }
 
 .logo img {
-    height: 40px;
+    height: auto;
+    max-height: 55px;
+    /* Increased for better visibility */
+    width: auto;
+    max-width: 250px;
+    object-fit: contain;
+    display: block;
 }
 
 .nav-links {
@@ -1060,9 +1066,10 @@
 
     /* Hero Section Mobile Optimization */
     .hero {
-        height: 250px; /* Reduced height for mobile */
+        height: 250px;
+        /* Reduced height for mobile */
     }
-    
+
     .slide-content img {
         object-fit: cover;
     }
