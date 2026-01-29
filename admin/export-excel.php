@@ -20,6 +20,7 @@ $query = "
     LEFT JOIN hari_aktif ha ON l.id = ha.lembaga_id
     LEFT JOIN materi_dipilih md ON l.id = md.lembaga_id
     LEFT JOIN persetujuan_lembaga pl ON l.id = pl.lembaga_id
+    WHERE YEAR(l.created_at) = YEAR(CURDATE())
     GROUP BY l.id
     ORDER BY l.created_at DESC";
 
@@ -45,7 +46,7 @@ echo '<tr>
         <th>Frekuensi</th>
         <th>Duta GNB</th>
         <th>Infaq</th>
-        <th>Manfaat</th>
+        <th>Pengajuan (Minggu Ke)</th>
         <th>Tgl Daftar</th>
     </tr>';
 

@@ -100,7 +100,8 @@ try {
             pl.duta_gnb,
             pl.kesediaan_infaq,
             pl.manfaat,
-            pl.pemahaman_kerjasama
+            pl.pemahaman_kerjasama,
+            l.is_contacted
         FROM lembaga l
         LEFT JOIN hari_aktif ha ON l.id = ha.lembaga_id
         LEFT JOIN materi_dipilih md ON l.id = md.lembaga_id
@@ -388,6 +389,7 @@ try {
                                 <th>Alamat</th>
                                 <th>Kecamatan</th>
                                 <th>Santri</th>
+                                <th>Minggu Ke</th>
                                 <th>PJ</th>
                                 <th>No. WA</th>
                                 <th>Maps</th>
@@ -402,11 +404,109 @@ try {
                                 <td><?= htmlspecialchars($data['alamat']) ?></td>
                                 <td><?= ucfirst($data['kecamatan']) ?></td>
                                 <td><?= $data['jumlah_santri'] ?></td>
+                                <td><?= htmlspecialchars($data['manfaat']) ?></td>
                                 <td><?= htmlspecialchars($data['penanggung_jawab']) ?></td>
-                                <td>
-                                    <a href="https://wa.me/<?= $data['no_wa'] ?>" target="_blank">
-                                        <?= $data['no_wa'] ?>
-                                    </a>
+                            <?php 
+                                // Prepare WhatsApp Message
+                                // Mode tanpa emoji (Plain text) sesuai permintaan
+                                
+                                $wa_message = "Assalamualaikum warahmatullahi wabarokatuh \n\n";
+                                $wa_message .= "Kami ucapkan Jazakumullah Khairan Katsir atas Pendaftaran Safari Ramadhan\n";
+                                $wa_message .= "* Nama Lembaga : " . $data['nama_lembaga'] . "\n";
+                                $wa_message .= "* Nama PJ Lembaga : " . $data['penanggung_jawab'] . "\n";
+                                $wa_message .= "* Jumlah Santri : " . $data['jumlah_santri'] . "\n";
+                                $wa_message .= "* Hari Aktif : " . str_replace(',', ', ', $data['hari_aktif']) . "\n";
+                                $wa_message .= "* Minggu ke : " . $data['manfaat'] . "\n";
+                                $wa_message .= "* Jam Aktif : " . $data['jam_aktif'] . "\n";
+                                $wa_message .= "* Materi : " . str_replace(',', ', ', $data['materi_dipilih']) . "\n";
+                                $wa_message .= "* Jumlah Kegiatan : " . $data['frekuensi_kunjungan'] . " kali\n";
+                                
+                                $infaq_status = ($data['kesediaan_infaq'] == 'ya' || $data['kesediaan_infaq'] == '1') ? 'Bersedia' : 'Tidak Bersedia';
+                                $wa_message .= "* Kesediaan Infaq Amplop : " . $infaq_status . "\n";
+                                
+                                $share_loc_wa = !empty($data['share_loc']) ? $data['share_loc'] : '-';
+                                $wa_message .= "* Sharelok : " . $share_loc_wa . "\n\n";
+                                
+                                $wa_message .= "DIJADWALKAN\n";
+
+                                // Ambil Data Jadwal Safari Secara Dinamis
+                                try {
+                                    $q_jadwal = "SELECT js.tanggal, js.jam, js.pengisi, ps.nama_pendamping 
+                                                 FROM jadwal_safari js 
+                                                 LEFT JOIN pendamping_safari ps ON js.id = ps.jadwal_id
+                                                 WHERE js.lembaga_id = :lid AND YEAR(js.tanggal) = :thn
+                                                 ORDER BY js.tanggal ASC";
+                                    $s_jadwal = $conn->prepare($q_jadwal);
+                                    $s_jadwal->execute(['lid' => $data['id'], 'thn' => $tahun]);
+                                    $jadwal_items = $s_jadwal->fetchAll(PDO::FETCH_ASSOC);
+
+                                    if(count($jadwal_items) > 0) {
+                                        // Jika sudah ada jadwal
+                                        foreach($jadwal_items as $idx => $j) {
+                                            $tgl_indo = date('d-m-Y', strtotime($j['tanggal']));
+                                            $jam_keg = $j['jam'];
+                                            $pengisi_nm = $j['pengisi'];
+                                            $pendamping_nm = !empty($j['nama_pendamping']) ? $j['nama_pendamping'] : '-';
+
+                                            // Jika lebih dari 1 jadwal, beri nomor
+                                            $prefix = (count($jadwal_items) > 1) ? "Kunjungan " . ($idx+1) . ":\n" : "";
+
+                                            $wa_message .= $prefix;
+                                            $wa_message .= "- Tanggal : " . $tgl_indo . "\n";
+                                            $wa_message .= "- Waktu : " . $jam_keg . " WIB\n";
+                                            $wa_message .= "- Pengisi : " . $pengisi_nm . "\n";
+                                            $wa_message .= "- Pendamping : " . $pendamping_nm . "\n\n";
+                                        }
+                                        // Hapus newline berlebih di akhir
+                                        $wa_message = rtrim($wa_message); 
+                                    } else {
+                                        // Jika belum ada jadwal (Default)
+                                        $wa_message .= "- Tanggal : menunggu konfirmasi \n";
+                                        $wa_message .= "- Waktu : menunggu konfirmasi \n";
+                                        $wa_message .= "- Pengisi : menunggu konfirmasi \n";
+                                        $wa_message .= "- Pendamping : menunggu konfirmasi";
+                                    }
+
+                                } catch(Exception $e) {
+                                    // Fallback jika error
+                                    $wa_message .= "- Tanggal : Error mengambil data \n";
+                                }
+
+                                // Gunakan rawurlencode agar spasi menjadi %20 bukan +
+                                $wa_url = "https://wa.me/" . $data['no_wa'] . "?text=" . rawurlencode($wa_message);
+                                
+                                // Determine Schedule Status Badge
+                                $has_jadwal = isset($jadwal_items) && count($jadwal_items) > 0;
+                                $badge_jadwal = $has_jadwal 
+                                    ? '<span class="badge bg-success mb-1">Terjadwal</span>' 
+                                    : '<span class="badge bg-danger mb-1">Belum Dijadwal</span>';
+
+                                // Determine Contact Status Badge & Button Class
+                                $is_contacted = isset($data['is_contacted']) && $data['is_contacted'] == 1;
+                                $btn_class = $is_contacted ? 'btn-secondary' : 'btn-success';
+                                $btn_icon = $is_contacted ? 'bi-check2-all' : 'bi-whatsapp';
+                                $btn_title = $is_contacted ? 'Sudah Dihubungi' : 'Hubungi via WA';
+                            ?>
+                                <td class="text-center">
+                                    <?= $badge_jadwal ?><br>
+                                    
+                                    <div class="btn-group mt-1">
+                                        <!-- Main WA Button -->
+                                        <a href="<?= $wa_url ?>" 
+                                           target="_blank" 
+                                           class="btn btn-sm <?= $btn_class ?> btn-wa-<?= $data['id'] ?>" 
+                                           title="<?= $btn_title ?>"
+                                           onclick="markContacted(<?= $data['id'] ?>)">
+                                            <i class="bi <?= $btn_icon ?>"></i> <?= $data['no_wa'] ?>
+                                        </a>
+                                        
+                                        <!-- Toggle Status Button (Undo/Redo) -->
+                                        <button class="btn btn-sm btn-outline-dark" 
+                                                onclick="toggleContactStatus(<?= $data['id'] ?>)" 
+                                                title="Ubah Status Kontak (Manual)">
+                                            <i class="bi bi-arrow-repeat"></i>
+                                        </button>
+                                    </div>
                                 </td>
                                 <td>
                                     <?php if(!empty($data['share_loc'])): ?>
@@ -418,10 +518,13 @@ try {
                                     <?php endif; ?>
                                 </td>
                                 <td>
-                                    <button class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#detailModal<?= $data['id'] ?>">
+                                    <button class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#detailModal<?= $data['id'] ?>" title="Detail">
                                         <i class="bi bi-eye"></i>
                                     </button>
-                                    <button class="btn btn-sm btn-danger" onclick="deleteLembaga(<?= $data['id'] ?>)">
+                                    <a href="edit_pendaftar.php?id=<?= $data['id'] ?>" class="btn btn-sm btn-warning" title="Edit">
+                                        <i class="bi bi-pencil-square"></i>
+                                    </a>
+                                    <button class="btn btn-sm btn-danger" onclick="deleteLembaga(<?= $data['id'] ?>)" title="Hapus">
                                         <i class="bi bi-trash"></i>
                                     </button>
                                 </td>
@@ -566,6 +669,56 @@ try {
                     }
                 });
             }
+        }
+
+        // Function to mark as contacted when WA link is clicked
+        function markContacted(id) {
+            // Only update if currently not contacted (green button) to avoid redundant requests
+            // But we want to ensure it turns grey anyway.
+            updateContactStatus(id, 1);
+        }
+
+        // Function to manual toggle status
+        function toggleContactStatus(id) {
+            // Check current status from button class
+            const btn = $(`.btn-wa-${id}`);
+            const currentStatus = btn.hasClass('btn-secondary') ? 1 : 0;
+            const newStatus = currentStatus === 1 ? 0 : 1;
+            
+            updateContactStatus(id, newStatus);
+        }
+
+        // Core AJAX Update Function
+        function updateContactStatus(id, status) {
+            $.ajax({
+                url: 'update_contact_status.php',
+                type: 'POST',
+                data: {id: id, status: status},
+                dataType: 'json',
+                success: function(response) {
+                    if(response.success) {
+                        const btn = $(`.btn-wa-${id}`);
+                        const icon = btn.find('i');
+                        
+                        if(status == 1) {
+                            // Change to Contacted State
+                            btn.removeClass('btn-success').addClass('btn-secondary');
+                            icon.removeClass('bi-whatsapp').addClass('bi-check2-all');
+                            btn.attr('title', 'Sudah Dihubungi');
+                        } else {
+                            // Revert to Uncontacted State
+                            btn.removeClass('btn-secondary').addClass('btn-success');
+                            icon.removeClass('bi-check2-all').addClass('bi-whatsapp');
+                            btn.attr('title', 'Hubungi via WA');
+                        }
+                    } else {
+                        console.error('Failed to update status: ' + response.message);
+                    }
+                },
+                error: function() {
+                    console.error('Network Error');
+                }
+            });
         }
     </script>
 </body>
