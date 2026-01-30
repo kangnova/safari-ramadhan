@@ -54,11 +54,15 @@ try {
         throw new Exception("Penanggung jawab dengan nomor WA tersebut sudah terdaftar");
     }
     
+    // Hash Password
+    $password_hash = password_hash($_POST['password'], PASSWORD_DEFAULT);
+
     // Insert lembaga dengan prepared statement
-    $stmt = $conn->prepare("INSERT INTO lembaga (email, nama_lembaga, alamat, kecamatan, jumlah_santri, jam_aktif, penanggung_jawab, jabatan, no_wa, share_loc) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt = $conn->prepare("INSERT INTO lembaga (email, password, nama_lembaga, alamat, kecamatan, jumlah_santri, jam_aktif, penanggung_jawab, jabatan, no_wa, share_loc) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     
     if(!$stmt->execute([
         $_POST['email'],
+        $password_hash,
         $_POST['nama_lembaga'], 
         $_POST['alamat'],
         $_POST['kecamatan'],

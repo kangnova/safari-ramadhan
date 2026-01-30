@@ -413,6 +413,19 @@ $formMessage = $stmtM->fetchColumn() ?: 'Mohon maaf, pendaftaran Safari Ramadhan
                     <input type="email" required name="email" placeholder="contoh@email.com">
                 </div>
 
+                <!-- 9b. Password -->
+                <div class="form-group">
+                    <label class="required">9b. Password (untuk login dashboard)</label>
+                    <input type="password" required name="password" id="password" placeholder="Minimal 6 karakter" minlength="6">
+                </div>
+
+                <!-- 9c. Konfirmasi Password -->
+                <div class="form-group">
+                    <label class="required">9c. Konfirmasi Password</label>
+                    <input type="password" required name="confirm_password" id="confirm_password" placeholder="Ulangi password">
+                    <small id="passwordError" style="color: red; display: none;">Password tidak cocok!</small>
+                </div>
+
                 <!-- 10. Jabatan -->
                 <div class="form-group">
                     <label class="required">10. Jabatan di Lembaga</label>
@@ -615,6 +628,28 @@ $formMessage = $stmtM->fetchColumn() ?: 'Mohon maaf, pendaftaran Safari Ramadhan
                         text: 'Pilih minimal 1 hari aktif TPA',
                         icon: 'warning'
                     });
+                }
+            }
+
+            if(page === 1) { // Validation for Page 2
+                const pass = document.getElementById('password');
+                const confirm = document.getElementById('confirm_password');
+                const error = document.getElementById('passwordError');
+
+                if(pass.value !== confirm.value) {
+                    valid = false;
+                    pass.classList.add('error');
+                    confirm.classList.add('error');
+                    error.style.display = 'block';
+                    Swal.fire({
+                        title: 'Password Tidak Cocok',
+                        text: 'Mohon pastikan password dan konfirmasi password sama.',
+                        icon: 'warning'
+                    });
+                } else {
+                    pass.classList.remove('error');
+                    confirm.classList.remove('error');
+                    error.style.display = 'none';
                 }
             }
 

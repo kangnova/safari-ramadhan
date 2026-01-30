@@ -53,6 +53,11 @@ $menuGroups = [
                 'link' => 'gallery.php'
             ],
             [
+                'title' => 'Pesan Masuk',
+                'icon' => 'chat-dots',
+                'link' => 'pesan.php'
+            ],
+            [
                 'title' => 'Slide Utama',
                 'icon' => 'images',
                 'link' => 'kelola_slide.php'

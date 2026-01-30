@@ -25,7 +25,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 header("Location: dashboard_p.php");
                 exit();
             } else {
-                $error = "Username atau Password salah!";
+                // Cek Login Lembaga (Email & Password)
+                $stmt = $conn->prepare("SELECT * FROM lembaga WHERE email = ?");
+                $stmt->execute([$username]); // Input username bisa berupa email
+                $lembaga = $stmt->fetch();
+
+                if ($lembaga && password_verify($password, $lembaga['password'])) {
+                    $_SESSION['lembaga_id'] = $lembaga['id'];
+                    $_SESSION['lembaga_nama'] = $lembaga['nama_lembaga'];
+                    // Update last_login
+                    $conn->prepare("UPDATE lembaga SET last_login = NOW() WHERE id = ?")->execute([$lembaga['id']]);
+                    
+                    header("Location: dashboard_l.php");
+                    exit();
+                }
+
+                $error = "Username/Email atau Password salah!";
             }
         } catch(PDOException $e) {
             $error = "Error: " . $e->getMessage();
@@ -88,7 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                 <label for="username" class="form-label">Username</label>
                                 <div class="input-group">
                                     <span class="input-group-text"><i class="bi bi-person-fill"></i></span>
-                                    <input type="text" class="form-control" id="username" name="username" placeholder="Masukkan username" required>
+                                    <input type="text" class="form-control" id="username" name="username" placeholder="Masukkan username / email lembaga" required>
                                 </div>
                             </div>
                             <div class="mb-4">

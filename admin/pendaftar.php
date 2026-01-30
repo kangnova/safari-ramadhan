@@ -524,6 +524,10 @@ try {
                                     <a href="edit_pendaftar.php?id=<?= $data['id'] ?>" class="btn btn-sm btn-warning" title="Edit">
                                         <i class="bi bi-pencil-square"></i>
                                     </a>
+                                    <!-- Reset Password -->
+                                    <button class="btn btn-sm btn-dark" onclick="resetPassword(<?= $data['id'] ?>, '<?= htmlspecialchars($data['nama_lembaga']) ?>')" title="Reset Password">
+                                        <i class="bi bi-key"></i>
+                                    </button>
                                     <button class="btn btn-sm btn-danger" onclick="deleteLembaga(<?= $data['id'] ?>)" title="Hapus">
                                         <i class="bi bi-trash"></i>
                                     </button>
@@ -554,6 +558,17 @@ try {
                                 <tr>
                                     <td width="40%">Email</td>
                                     <td><?= htmlspecialchars($data['email']) ?></td>
+                                </tr>
+                                <tr>
+                                    <td>Status Login</td>
+                                    <td>
+                                        <?php if (!empty($data['last_login'])): ?>
+                                            <span class="badge bg-success">Aktif</span> <br>
+                                            <small class="text-muted"><?= date('d/m/Y H:i', strtotime($data['last_login'])) ?></small>
+                                        <?php else: ?>
+                                            <span class="badge bg-secondary">Belum Login</span>
+                                        <?php endif; ?>
+                                    </td>
                                 </tr>
                                 <tr>
                                     <td>Alamat</td>
@@ -666,6 +681,29 @@ try {
                     },
                     error: function() {
                         alert('Terjadi kesalahan saat menghapus data');
+                    }
+            }
+        }
+
+        function resetPassword(id, nama) {
+            if(confirm('Apakah Anda yakin ingin me-reset password untuk ' + nama + ' menjadi default (bismillah)?')) {
+                $.ajax({
+                    url: 'reset_password_lembaga.php', // Pastikan file ini ada
+                    type: 'POST',
+                    data: {id: id},
+                    dataType: 'json',
+                    success: function(response) {
+                        // Cek response, jika server kirim text json (seperti di delete_lembaga.php), parse dulu. 
+                        // Tapi karena dataType: 'json' jquery akan otomatis parse.
+                        if(response.success) {
+                            alert('Password berhasil di-reset.');
+                        } else {
+                            alert('Gagal: ' + (response.message || 'Unknown error'));
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error(xhr.responseText);
+                        alert('Terjadi kesalahan saat mereset password');
                     }
                 });
             }

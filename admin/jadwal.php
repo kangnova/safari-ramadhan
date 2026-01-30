@@ -354,7 +354,8 @@ if(isset($_SESSION['success'])): ?>
                                                 'Saturday' => 'Sabtu'
                                             ];
                                     ?>
-                                    <tr>
+                                    ?>
+                                    <tr class="<?= $row['status'] == 'terlaksana' && !empty($row['tgl_laporan']) ? 'table-success' : '' ?>">
                                         <td><?= $no++ ?></td>
                                         <td><?= $hari_id[$hari] ?></td>
                                         <td><?= date('d/m/Y', strtotime($row['tanggal'])) ?></td>
@@ -385,6 +386,9 @@ if(isset($_SESSION['success'])): ?>
                                             <span class="badge bg-<?= $row['status'] == 'terlaksana' ? 'success' : 
                                                 ($row['status'] == 'pending' ? 'warning' : 'danger') ?>">
                                                 <?= ucfirst($row['status']) ?>
+                                                <?php if(!empty($row['tgl_laporan'])): ?>
+                                                    <i class="bi bi-check-circle-fill ms-1" title="Laporan Masuk"></i>
+                                                <?php endif; ?>
                                             </span>
                                         </td>
                                         <td>
@@ -532,6 +536,34 @@ if(isset($_SESSION['success'])): ?>
                                 </tr>
                             </table>
                         </div>
+                    </div>
+                    
+                    <!-- Display Bukti Kegiatan (Multiple Photos) -->
+                    <div class="col-md-12 mt-3">
+                        <h6 class="fw-bold">Bukti Kegiatan:</h6>
+                        <?php 
+                        if (!empty($row['bukti_kegiatan'])) {
+                            $photos = json_decode($row['bukti_kegiatan']);
+                            // Fallback for old data (single string)
+                            if (json_last_error() !== JSON_ERROR_NONE) {
+                                $photos = [$row['bukti_kegiatan']];
+                            }
+
+                            echo '<div class="row g-2">';
+                            foreach ($photos as $photo) {
+                                // Fix path if starts with uploads/
+                                $display_path = '../' . $photo; 
+                                echo '<div class="col-md-3 col-6">';
+                                echo '<a href="' . $display_path . '" target="_blank">';
+                                echo '<img src="' . $display_path . '" class="img-thumbnail w-100" style="height: 150px; object-fit: cover;" alt="Bukti Kegiatan">';
+                                echo '</a>';
+                                echo '</div>';
+                            }
+                            echo '</div>';
+                        } else {
+                            echo '<p class="text-muted fst-italic">Belum ada bukti foto.</p>';
+                        }
+                        ?>
                     </div>
                 </div>
 
