@@ -14,11 +14,20 @@ try {
     $conn->beginTransaction();
     
     // Validasi data yang dibutuhkan
-    $required_fields = ['email', 'nama_lembaga', 'alamat', 'kecamatan', 'pj', 'no_wa', 'share_loc'];
+    $required_fields = ['email', 'nama_lembaga', 'alamat', 'kecamatan', 'pj', 'no_wa', 'share_loc', 'password', 'confirm_password'];
     foreach($required_fields as $field) {
         if(!isset($_POST[$field]) || empty($_POST[$field])) {
             throw new Exception("Field $field harus diisi");
         }
+    }
+    
+    // Validasi Password Match
+    if ($_POST['password'] !== $_POST['confirm_password']) {
+        throw new Exception("Konfirmasi Password tidak cocok");
+    }
+    
+    if (strlen($_POST['password']) < 6) {
+        throw new Exception("Password minimal 6 karakter");
     }
     
     // Cek semua duplikasi dalam satu query (Scope per tahun)
@@ -54,11 +63,33 @@ try {
         throw new Exception("Penanggung jawab dengan nomor WA tersebut sudah terdaftar");
     }
     
+    // Validasi Password Match
+    if ($_POST['password'] !== $_POST['confirm_password']) {
+        throw new Exception("Konfirmasi Password tidak cocok");
+    }
+    
+    if (strlen($_POST['password']) < 6) {
+        throw new Exception("Password minimal 6 karakter");
+    }
+
+    // Ambil field tambahan (handling optional/defaults)
+    $pilihan_pekan = isset($_POST['manfaat']) ? $_POST['manfaat'] : ''; // Note: di form name='manfaat'
+    $frekuensi = isset($_POST['frekuensi']) ? $_POST['frekuensi'] : 1;
+    $infaq = isset($_POST['kesediaan_infaq']) ? $_POST['kesediaan_infaq'] : 'tidak';
+    $duta = isset($_POST['duta_gnb']) ? $_POST['duta_gnb'] : 'opsional';
+    
     // Hash Password
     $password_hash = password_hash($_POST['password'], PASSWORD_DEFAULT);
 
     // Insert lembaga dengan prepared statement
-    $stmt = $conn->prepare("INSERT INTO lembaga (email, password, nama_lembaga, alamat, kecamatan, jumlah_santri, jam_aktif, penanggung_jawab, jabatan, no_wa, share_loc) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    // Update Query untuk menyertakan kolom baru
+    $sql = "INSERT INTO lembaga (
+        email, password, nama_lembaga, alamat, kecamatan, 
+        jumlah_santri, jam_aktif, penanggung_jawab, jabatan, 
+        no_wa, share_loc, pilihan_pekan, frekuensi, infaq_bersedia, duta_gnb
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+    $stmt = $conn->prepare($sql);
     
     if(!$stmt->execute([
         $_POST['email'],
@@ -71,7 +102,11 @@ try {
         $_POST['pj'],
         $_POST['jabatan'],
         $_POST['no_wa'],
-        $_POST['share_loc']
+        $_POST['share_loc'],
+        $pilihan_pekan,
+        $frekuensi,
+        $infaq,
+        $duta
     ])) {
         throw new Exception("Gagal menyimpan data lembaga");
     }

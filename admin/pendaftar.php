@@ -682,6 +682,7 @@ try {
                     error: function() {
                         alert('Terjadi kesalahan saat menghapus data');
                     }
+                });
             }
         }
 
@@ -734,6 +735,7 @@ try {
                 data: {id: id, status: status},
                 dataType: 'json',
                 success: function(response) {
+                    console.log('Update Response:', response);
                     if(response.success) {
                         const btn = $(`.btn-wa-${id}`);
                         const icon = btn.find('i');
@@ -751,10 +753,12 @@ try {
                         }
                     } else {
                         console.error('Failed to update status: ' + response.message);
+                        alert('Gagal update status: ' + response.message);
                     }
                 },
-                error: function() {
-                    console.error('Network Error');
+                error: function(xhr, status, error) {
+                    console.error('Network Error:', xhr.responseText);
+                    alert('Terjadi kesalahan jaringan/server: ' + xhr.status + ' ' + error);
                 }
             });
         }

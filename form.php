@@ -93,6 +93,7 @@ $formMessage = $stmtM->fetchColumn() ?: 'Mohon maaf, pendaftaran Safari Ramadhan
 
         input[type="text"],
         input[type="email"],
+        input[type="password"],
         input[type="tel"],
         input[type="number"],
         select,
@@ -405,6 +406,24 @@ $formMessage = $stmtM->fetchColumn() ?: 'Mohon maaf, pendaftaran Safari Ramadhan
                         this.value = '62' + val;
                     }
                 });
+                
+                // Password Validation
+                const password = document.getElementById('password');
+                const confirmPassword = document.getElementById('confirm_password');
+                const passwordError = document.getElementById('passwordError');
+
+                function validatePassword() {
+                    if (confirmPassword.value && password.value !== confirmPassword.value) {
+                        passwordError.style.display = 'block';
+                        confirmPassword.style.borderColor = 'red';
+                    } else {
+                        passwordError.style.display = 'none';
+                        confirmPassword.style.borderColor = '#ddd'; // Reset to default
+                    }
+                }
+
+                password.addEventListener('input', validatePassword);
+                confirmPassword.addEventListener('input', validatePassword);
                 </script>
 
                 <!-- 9. Email -->

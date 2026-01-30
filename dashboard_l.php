@@ -138,11 +138,13 @@ try {
                                     <tbody>
                                         <?php foreach($jadwal_list as $row): 
                                             // Status Logic
-                                            $status_cls = match($row['status']) {
-                                                'terlaksana' => 'success',
-                                                'batal' => 'danger',
-                                                default => 'warning'
-                                            };
+                                            // Status Logic
+                                            $status_cls = 'warning';
+                                            if ($row['status'] == 'terlaksana') {
+                                                $status_cls = 'success';
+                                            } elseif ($row['status'] == 'batal') {
+                                                $status_cls = 'danger';
+                                            }
                                         ?>
                                         <tr>
                                             <td>
@@ -324,8 +326,9 @@ try {
                             <input type="text" name="pj" class="form-control" value="<?= htmlspecialchars($lembaga['penanggung_jawab']) ?>" required>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">No. WA</label>
-                            <input type="text" name="no_wa" class="form-control" value="<?= htmlspecialchars($lembaga['no_wa']) ?>" required>
+                            <label class="form-label">No. WhatsApp</label>
+                            <input type="text" name="no_wa" id="noWaInputEdit" class="form-control" value="<?= htmlspecialchars($lembaga['no_wa']) ?>" required>
+                            <small class="text-muted d-block" style="font-size: 0.8em;">*Otomatis diawali 62</small>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Alamat</label>
@@ -370,5 +373,27 @@ try {
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Script formatting WA untuk Edit Profil
+        document.addEventListener('DOMContentLoaded', function() {
+            const waInput = document.getElementById('noWaInputEdit');
+            if(waInput) {
+                waInput.addEventListener('input', function(e) {
+                    let val = this.value.replace(/[^0-9]/g, '');
+                    if (val.startsWith('0')) {
+                        val = '62' + val.substring(1);
+                    }
+                    this.value = val;
+                });
+                
+                waInput.addEventListener('blur', function(e) {
+                    let val = this.value;
+                    if (val.length > 0 && !val.startsWith('62')) {
+                        this.value = '62' + val;
+                    }
+                });
+            }
+        });
+    </script>
 </body>
 </html>
