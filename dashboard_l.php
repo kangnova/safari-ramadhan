@@ -36,10 +36,13 @@ try {
 
     // 2. Ambil Jadwal Safari
     $stmtJadwal = $conn->prepare("
-        SELECT js.*, p.nama as nama_pengisi 
+        SELECT js.*, p.nama as nama_pengisi, 
+               GROUP_CONCAT(ps.nama_pendamping SEPARATOR '|||') as list_pendamping
         FROM jadwal_safari js 
         LEFT JOIN pengisi p ON js.pengisi = p.nama
+        LEFT JOIN pendamping_safari ps ON js.id = ps.jadwal_id
         WHERE js.lembaga_id = ? 
+        GROUP BY js.id
         ORDER BY js.tanggal ASC
     ");
     $stmtJadwal->execute([$id_lembaga]);
@@ -202,12 +205,55 @@ try {
                                                                     </div>
                                                                     <div class="row g-2">
                                                                         <div class="col-6 mb-3">
+                                                                            <label class="form-label">Jam Kedatangan</label>
+                                                                            <input type="time" name="jam_kedatangan" class="form-control" value="<?= isset($row['jam_kedatangan']) ? $row['jam_kedatangan'] : '' ?>" required>
+                                                                        </div>
+                                                                        <div class="col-6 mb-3">
                                                                             <label class="form-label">Jml Santri</label>
-                                                                            <input type="number" name="jumlah_santri" class="form-control" required placeholder="0">
+                                                                            <input type="number" name="jumlah_santri" class="form-control" required placeholder="0" value="<?= isset($row['jumlah_santri']) ? $row['jumlah_santri'] : '' ?>">
                                                                         </div>
                                                                         <div class="col-6 mb-3">
                                                                             <label class="form-label">Jml Guru</label>
-                                                                            <input type="number" name="jumlah_guru" class="form-control" required placeholder="0">
+                                                                            <input type="number" name="jumlah_guru" class="form-control" required placeholder="0" value="<?= isset($row['jumlah_guru']) ? $row['jumlah_guru'] : '' ?>">
+                                                                        </div>
+                                                                        
+                                                                        <!-- Nama Pengisi (Otomatis dari Jadwal) -->
+                                                                        <div class="col-6 mb-3">
+                                                                            <label class="form-label">Nama Pengisi</label>
+                                                                            <input type="text" class="form-control bg-light" value="<?= htmlspecialchars($row['nama_pengisi']) ?>" readonly>
+                                                                            <small class="text-muted d-block" style="font-size: 0.75rem;">*Sesuai Jadwal</small>
+                                                                        </div>
+
+                                                                        <!-- Input Pendamping (Dynamic & Pre-filled) -->
+                                                                        <div class="col-12 mb-3">
+                                                                            <label class="form-label">Nama Pendamping</label>
+                                                                            <div id="pendamping-container-<?= $row['id'] ?>">
+                                                                                <?php 
+                                                                                $curr_pendamping = !empty($row['list_pendamping']) ? explode('|||', $row['list_pendamping']) : [];
+                                                                                
+                                                                                if(count($curr_pendamping) > 0):
+                                                                                    foreach($curr_pendamping as $idx => $p_name):
+                                                                                ?>
+                                                                                    <div class="input-group mb-2">
+                                                                                        <input type="text" name="nama_pendamping[]" class="form-control" placeholder="Nama Pendamping" value="<?= htmlspecialchars($p_name) ?>" required>
+                                                                                        <?php if($idx > 0): ?>
+                                                                                            <button type="button" class="btn btn-outline-danger" onclick="this.parentElement.remove()"><i class="bi bi-trash"></i></button>
+                                                                                        <?php else: ?>
+                                                                                            <button type="button" class="btn btn-outline-secondary" onclick="addPendampingField(<?= $row['id'] ?>)"><i class="bi bi-plus"></i></button>
+                                                                                        <?php endif; ?>
+                                                                                    </div>
+                                                                                <?php 
+                                                                                    endforeach;
+                                                                                else:
+                                                                                ?>
+                                                                                    <!-- Default kosong jika belum ada -->
+                                                                                    <div class="input-group mb-2">
+                                                                                        <input type="text" name="nama_pendamping[]" class="form-control" placeholder="Nama Pendamping" required>
+                                                                                        <button type="button" class="btn btn-outline-secondary" onclick="addPendampingField(<?= $row['id'] ?>)"><i class="bi bi-plus"></i></button>
+                                                                                    </div>
+                                                                                <?php endif; ?>
+                                                                            </div>
+                                                                            <small class="text-muted">Nama pendamping otomatis muncul sesuai jadwal. Klik (+) jika ada tambahan.</small>
                                                                         </div>
                                                                     </div>
                                                                     <div class="mb-3">
@@ -394,6 +440,18 @@ try {
                 });
             }
         });
+
+        // Function to add dynamic pendamping fields
+        function addPendampingField(id) {
+            const container = document.getElementById('pendamping-container-' + id);
+            const div = document.createElement('div');
+            div.className = 'input-group mb-2';
+            div.innerHTML = `
+                <input type="text" name="nama_pendamping[]" class="form-control" placeholder="Nama Pendamping">
+                <button type="button" class="btn btn-outline-danger" onclick="this.parentElement.remove()"><i class="bi bi-trash"></i></button>
+            `;
+            container.appendChild(div);
+        }
     </script>
 </body>
 </html>

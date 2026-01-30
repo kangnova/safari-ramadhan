@@ -356,10 +356,10 @@ $formMessage = $stmtM->fetchColumn() ?: 'Mohon maaf, pendaftaran Safari Ramadhan
                     <label class="required">6. Pengajuan Pelaksanaan Safari Ramadhan</label>
                     <select required name="manfaat">
                         <option value="">Pilih Pekan</option>
-                        <option value="Pekan 1">Pekan 1</option>
-                        <option value="Pekan 2">Pekan 2</option>
-                        <option value="Pekan 3">Pekan 3</option>
-                        <option value="Pekan 4">Pekan 4</option>
+                        <option value="Pekan 1 Ramadhan">Pekan 1 Ramadhan</option>
+                        <option value="Pekan 2 Ramadhan">Pekan 2 Ramadhan</option>
+                        <option value="Pekan 3 Ramadhan">Pekan 3 Ramadhan</option>
+                        <option value="Pekan 4 Ramadhan">Pekan 4 Ramadhan</option>
                         <option value="Bebas">Bebas / Kapan Saja</option>
                     </select>
                 </div>
