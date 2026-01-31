@@ -1,0 +1,9 @@
+
+# Uploads
+img/bukti_transfer/
+img/donasi/
+uploads/
+*.tmp
+*.log
+error_log
+.vscode/
