@@ -1,29 +1,8 @@
 <?php
-$host = 'localhost';
-$username = 'gnborid_safariramadhan2025';
-$password = 'gnborid_safariramadhan2025';
-$database = 'gnborid_safariramadhan2025';
+require_once 'koneksi.php';
+// Alias $conn ke $pdo agar kompatibel dengan kode selanjutnya
+$pdo = $conn;
 
-try {
-    // Buat koneksi PDO
-    $pdo = new PDO("mysql:host=$host;dbname=$database", $username, $password);
-    
-    // Set mode error PDO
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    
-    // Set default fetch mode array asosiatif
-    $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-    
-    // Pastikan koneksi menggunakan UTF-8
-    $pdo->exec("SET NAMES utf8");
-    
-} catch(PDOException $e) {
-    // Log error koneksi untuk troubleshooting
-    error_log("Koneksi database gagal: " . $e->getMessage());
-    
-    // Tampilkan pesan user-friendly (tidak menampilkan detail sensitif)
-    die("Maaf, terjadi masalah saat menghubungkan ke database. Silakan coba lagi nanti.");
-}
 
 session_start();
 
@@ -63,7 +42,7 @@ if (!$donasi) {
 $nominal_display = 'Rp ' . number_format($donasi['nominal'], 0, ',', '.');
 
 // Perbaiki tampilan metode pembayaran
-$metode_display = $donasi['metode_pembayaran'];
+$metode_display = $donasi['metode_pembayaran'] ?? '-';
 if (strpos($metode_display, 'method_') === 0) {
     $method_id = substr($metode_display, 7);
     if (is_numeric($method_id)) {

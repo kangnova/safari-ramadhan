@@ -130,13 +130,13 @@ if (isset($_POST['update_order'])) {
 $stmt = $conn->query("SELECT * FROM slider_images ORDER BY sort_order ASC");
 $sliders = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Ambil daftar kampanye (jika ada)
+// Ambil daftar program donasi untuk dropdown
 $campaigns = [];
 try {
-    $stmt = $conn->query("SELECT id, title FROM campaigns ORDER BY title ASC");
+    $stmt = $conn->query("SELECT id, judul as title FROM program_donasi WHERE status = 'active' ORDER BY judul ASC");
     $campaigns = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    // Jika tabel campaigns belum ada, tidak perlu menampilkan error
+    // Silent error
 }
 
 // Function untuk format rupiah (konsistensi dengan template)

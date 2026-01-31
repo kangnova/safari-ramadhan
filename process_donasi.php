@@ -64,6 +64,9 @@ try {
     
     $is_anonim = isset($_POST['anonim']) ? 1 : 0;
     
+    // Ambil pesan/doa
+    $pesan = isset($_POST['pesan']) ? htmlspecialchars(trim($_POST['pesan'])) : '';
+    
     // Generate token transaksi
     $token = 'INV-TRX-' . date('Ymd') . rand(100000, 999999);
     
@@ -74,10 +77,10 @@ try {
     $program_id = isset($_POST['program_id']) ? intval($_POST['program_id']) : 1; 
     if ($program_id <= 0) $program_id = 1;
 
-    $sql = "INSERT INTO donasi (nama_donatur, nominal, is_anonim, email, whatsapp, token, status, created_at, program_id) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?)";
+    $sql = "INSERT INTO donasi (nama_donatur, nominal, is_anonim, email, whatsapp, token, status, created_at, program_id, pesan) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?)";
     $stmt = $conn->prepare($sql);
     
-    if ($stmt->execute([$nama, $nominal, $is_anonim, $email, $whatsapp, $token, $status, $program_id])) {
+    if ($stmt->execute([$nama, $nominal, $is_anonim, $email, $whatsapp, $token, $status, $program_id, $pesan])) {
         // Buat CSRF token baru setelah berhasil untuk mencegah resubmit
         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
         

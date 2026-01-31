@@ -44,7 +44,12 @@ $totalData = $countStmt->fetchColumn();
 $totalPages = ceil($totalData / $perPage);
 
 // Ambil data donasi
-$query = "SELECT * FROM donasi" . $whereClause . " ORDER BY created_at DESC LIMIT $perPage OFFSET $offset";
+// Ambil data donasi
+$query = "SELECT d.*, pd.judul as program_judul 
+          FROM donasi d 
+          LEFT JOIN program_donasi pd ON d.program_id = pd.id " . 
+          $whereClause . 
+          " ORDER BY d.created_at DESC LIMIT $perPage OFFSET $offset";
 $stmt = $conn->prepare($query);
 $stmt->execute($params);
 $donasi = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -227,6 +232,7 @@ $totalFailed = $totalStmtFailed->fetch(PDO::FETCH_ASSOC);
                                     <th>ID</th>
                                     <th>Token</th>
                                     <th>Nama Donatur</th>
+                                    <th>Program</th>
                                     <th>Nominal</th>
                                     <th>Metode</th>
                                     <th>Status</th>
@@ -242,6 +248,7 @@ $totalFailed = $totalStmtFailed->fetch(PDO::FETCH_ASSOC);
                                             <td><?= $d['id'] ?></td>
                                             <td><?= $d['token'] ?></td>
                                             <td><?= $d['is_anonim'] ? '<em>Anonim</em>' : htmlspecialchars($d['nama_donatur']) ?></td>
+                                            <td><?= htmlspecialchars($d['program_judul'] ?? 'Umum') ?></td>
                                             <td><?= formatRupiah($d['nominal']) ?></td>
                                             <td><?= $d['metode_pembayaran'] ?? '-' ?></td>
                                             <td>
@@ -260,10 +267,34 @@ $totalFailed = $totalStmtFailed->fetch(PDO::FETCH_ASSOC);
                                             </td>
                                             <td><?= date('d M Y H:i', strtotime($d['created_at'])) ?></td>
                                             <td>
-                                                <div class="btn-group">
                                                     <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#detailModal<?= $d['id'] ?>">
                                                         <i class="fas fa-eye"></i>
                                                     </button>
+                                                    
+                                                    <?php
+                                                    // Prepare WA Message
+                                                    $waPhone = $d['whatsapp'];
+                                                    if (substr($waPhone, 0, 1) == '0') $waPhone = '62' . substr($waPhone, 1);
+                                                    
+                                                    $pesanWA = "Assalamu'alaikum *" . $d['nama_donatur'] . "*,\n\n";
+                                                    $pesanWA .= "Terima kasih atas donasi Anda sebesar *" . formatRupiah($d['nominal']) . "* untuk program *Ifthar Ramadhan*.\n\n";
+                                                    $pesanWA .= "Donasi Anda telah kami terima dengan baik.\n";
+                                                    $pesanWA .= "Semoga menjadi amal jariyah yang barokah.\n\n";
+                                                    $pesanWA .= "_Panitia Ifthar Ramadhan_";
+                                                    
+                                                    $linkWA = "https://wa.me/$waPhone?text=" . urlencode($pesanWA);
+                                                    ?>
+                                                    
+                                                    <a href="<?= $linkWA ?>" target="_blank" class="btn btn-sm btn-success" title="Kirim WA">
+                                                        <i class="fab fa-whatsapp"></i>
+                                                    </a>
+
+                                                    <?php if ($d['status'] === 'success'): ?>
+                                                    <a href="cetak_kwitansi.php?id=<?= $d['id'] ?>" target="_blank" class="btn btn-sm btn-info text-white" title="Cetak Kwitansi">
+                                                        <i class="fas fa-print"></i>
+                                                    </a>
+                                                    <?php endif; ?>
+
                                                     <button type="button" class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#updateModal<?= $d['id'] ?>">
                                                         <i class="fas fa-edit"></i>
                                                     </button>
@@ -297,6 +328,9 @@ $totalFailed = $totalStmtFailed->fetch(PDO::FETCH_ASSOC);
                                                                     <dt class="col-sm-4">WhatsApp</dt>
                                                                     <dd class="col-sm-8"><?= htmlspecialchars($d['whatsapp']) ?></dd>
                                                                     
+                                                                    <dt class="col-sm-4">Program</dt>
+                                                                    <dd class="col-sm-8"><?= htmlspecialchars($d['program_judul'] ?? 'Umum') ?></dd>
+
                                                                     <dt class="col-sm-4">Nominal</dt>
                                                                     <dd class="col-sm-8"><?= formatRupiah($d['nominal']) ?></dd>
                                                                     
@@ -308,6 +342,11 @@ $totalFailed = $totalStmtFailed->fetch(PDO::FETCH_ASSOC);
                                                                         <span class="badge <?= getStatusBadgeClass($d['status']) ?>">
                                                                             <?= ucfirst($d['status']) ?>
                                                                         </span>
+                                                                    </dd>
+
+                                                                    <dt class="col-sm-4">Pesan / Doa</dt>
+                                                                    <dd class="col-sm-8 fst-italic">
+                                                                        <?= !empty($d['pesan']) ? nl2br(htmlspecialchars($d['pesan'])) : '-' ?>
                                                                     </dd>
                                                                     
                                                                     <dt class="col-sm-4">Tanggal</dt>

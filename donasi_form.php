@@ -481,6 +481,10 @@ try {
                             Format email tidak valid
                         </div>
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted">Doa / Pesan Kebaikan (Opsional)</label>
+                        <textarea name="pesan" class="form-control" rows="3" placeholder="Tuliskan doa atau harapan Anda..."></textarea>
+                    </div>
                 </div>
             </div>
         </form>

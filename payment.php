@@ -732,6 +732,19 @@ foreach ($all_methods as $method):
                 <i class="fas fa-arrow-left me-2"></i> Pilih Metode Lain
             </button>
         </div>
+        </div>
+        
+        <!-- Toast Notification -->
+        <div class="position-fixed top-0 start-50 translate-middle-x p-3" style="z-index: 1100">
+            <div id="copyToast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="fas fa-check-circle me-2"></i> Teks berhasil disalin!
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -794,24 +807,62 @@ foreach ($all_methods as $method):
         }
         
         // Fungsi untuk menyalin teks ke clipboard
+        // Fungsi untuk menyalin teks ke clipboard yang lebih robust
         function copyToClipboard(text) {
-            navigator.clipboard.writeText(text).then(() => {
-                alert('Teks berhasil disalin');
-            }).catch(err => {
-                console.error('Error menyalin teks: ', err);
-                // Fallback untuk browser yang tidak support clipboard API
+            // Pastikan text adalah string
+            text = String(text);
+            
+            // Coba pakai API Clipboard modern jika tersedia dan konteks aman (HTTPS/Localhost)
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(() => {
+                    showToast();
+                }).catch(err => {
+                    console.error('Clipboard API gagal, mencoba fallback...', err);
+                    fallbackCopy(text);
+                });
+            } else {
+                // Langsung fallback jika tidak support
+                fallbackCopy(text);
+            }
+        }
+        
+        function fallbackCopy(text) {
+            try {
                 const textArea = document.createElement("textarea");
                 textArea.value = text;
+                
+                // Styling agar tidak terlihat tapi tetap bisa di-select
+                textArea.style.position = "fixed";
+                textArea.style.left = "-9999px";
+                textArea.style.top = "0";
+                
                 document.body.appendChild(textArea);
+                textArea.focus();
                 textArea.select();
-                try {
-                    document.execCommand('copy');
-                    alert('Teks berhasil disalin');
-                } catch (err) {
-                    console.error('Fallback clipboard error:', err);
-                }
+                
+                // Untuk mobile compatibility
+                textArea.setSelectionRange(0, 99999); 
+                
+                const successful = document.execCommand('copy');
                 document.body.removeChild(textArea);
-            });
+                
+                if (successful) {
+                    showToast();
+                } else {
+                    throw new Error('execCommand returned false');
+                }
+            } catch (err) {
+                console.error('Fallback clipboard error:', err);
+                // Pesan error yang lebih user friendly
+                const shortText = text.length > 20 ? text.substring(0, 20) + '...' : text;
+                prompt("Gagal menyalin otomatis. Silakan salin manual:", text);
+            }
+        }
+        
+        function showToast() {
+            const toastEl = document.getElementById('copyToast');
+            const toast = new bootstrap.Toast(toastEl);
+            toast.show();
         }
         
         // Cek apakah metode pembayaran sudah dipilih sebelumnya
